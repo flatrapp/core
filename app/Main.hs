@@ -23,6 +23,9 @@ import           Database.Persist        hiding (get) -- To avoid a naming clash
 import qualified Database.Persist        as P
 import           Database.Persist.Sqlite hiding (get)
 import           Database.Persist.TH
+import qualified Data.Text               as T
+import qualified Data.Text.Encoding      as T
+import qualified Data.Text.IO            as T
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 Person json -- The json keyword will make Persistent generate sensible ToJSON and FromJSON instances for us.
@@ -35,10 +38,33 @@ type Api = SpockM SqlBackend () () ()
 
 type ApiAction a = SpockAction SqlBackend () () a
 
+mySpockCfg :: sess -> PoolOrConn conn -> st -> IO (SpockCfg conn sess st)
+mySpockCfg sess conn st =
+  do defSess <- defaultSessionCfg sess
+     return
+       SpockCfg
+       { spc_initialState = st
+       , spc_database = conn
+       , spc_sessionCfg = defSess
+       , spc_maxRequestSize = Just (5 * 1024 * 1024)
+       , spc_errorHandler = errorHandler
+       , spc_csrfProtection = False
+       , spc_csrfHeaderName = "X-Csrf-Token"
+       , spc_csrfPostName = "__csrf_token"
+       }
+
+errorHandler :: Status -> ActionCtxT () IO ()
+errorHandler notFound404 = do
+    setStatus notFound404
+    text "Sorry, nothing found :/"
+errorHandler s = do
+    setStatus s
+    text $ (T.pack . show $ (statusCode s)) <> " - " <> T.decodeUtf8 (statusMessage s)
+
 main :: IO ()
 main = do
   pool <- runStdoutLoggingT $ createSqlitePool "api.db" 5
-  spockCfg <- defaultSpockCfg () (PCPool pool) ()
+  spockCfg <- mySpockCfg () (PCPool pool) ()
   runStdoutLoggingT $ runSqlPool (do runMigration migrateAll) pool
   runSpock 8123 (spock spockCfg app)
 
@@ -77,5 +103,3 @@ errorJson code message =
     [ "result" .= String "failure"
     , "error" .= object ["code" .= code, "message" .= message]
     ]
-
-
