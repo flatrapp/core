@@ -9,6 +9,7 @@
 {-# LANGUAGE QuasiQuotes                #-}
 {-# LANGUAGE TemplateHaskell            #-}
 {-# LANGUAGE TypeFamilies               #-}
+{-# LANGUAGE ScopedTypeVariables        #-}
 
 import           Web.Spock
 import           Web.Spock.Config
@@ -19,9 +20,9 @@ import           Data.Monoid             ((<>))
 import           Data.Text               (Text, pack)
 import           GHC.Generics
 import           Control.Monad.Logger    (LoggingT, runStdoutLoggingT)
-import           Database.Persist        hiding (get) -- To avoid a naming clash with Web.Spock.get
+import           Database.Persist        hiding (get, delete)
 import qualified Database.Persist        as P
-import           Database.Persist.Sqlite hiding (get)
+import           Database.Persist.Sqlite hiding (get, delete)
 import           Database.Persist.TH
 import qualified Data.Text               as T
 import qualified Data.Text.Encoding      as T
@@ -80,6 +81,15 @@ app = do
         setStatus notFound404
         errorJson 2 "Could not find a person with matching id"
       Just thePerson -> json thePerson
+  delete ("people" <//> var) $ \(personId :: PersonId) -> do
+    maybePerson <- runSQL $ P.get personId :: ApiAction (Maybe Person)
+    case maybePerson of
+      Nothing -> do
+        setStatus notFound404
+        errorJson 2 "Could not find a person with matching id"
+      Just thePerson -> do
+        runSQL $ P.delete personId
+        text $ "Thanks for deleting the user"
   post "people" $ do
     maybePerson <- jsonBody :: ApiAction (Maybe Person)
     case maybePerson of
