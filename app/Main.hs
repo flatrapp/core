@@ -17,23 +17,17 @@ import           Network.HTTP.Types.Status
 
 import           Data.Aeson              hiding (json)
 import           Data.Monoid             ((<>))
-import           Data.Text               (Text, pack)
 import           GHC.Generics
 import           Control.Monad.Logger    (LoggingT, runStdoutLoggingT)
 import           Database.Persist        hiding (get, delete)
 import qualified Database.Persist        as P
 import           Database.Persist.Sqlite hiding (get, delete)
-import           Database.Persist.TH
+import           Data.Text               (Text, pack)
 import qualified Data.Text               as T
 import qualified Data.Text.Encoding      as T
 import qualified Data.Text.IO            as T
 
-share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
-Person json -- The json keyword will make Persistent generate sensible ToJSON and FromJSON instances for us.
-  name Text
-  age Int
-  deriving Show
-|]
+import           Model.CoreTypes
 
 type Api = SpockM SqlBackend () () ()
 
