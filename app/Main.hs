@@ -1,31 +1,31 @@
 {-# LANGUAGE DeriveGeneric              #-}
-{-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE EmptyDataDecls             #-}
 {-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GADTs                      #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses      #-}
+{-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE QuasiQuotes                #-}
+{-# LANGUAGE ScopedTypeVariables        #-}
 {-# LANGUAGE TemplateHaskell            #-}
 {-# LANGUAGE TypeFamilies               #-}
-{-# LANGUAGE ScopedTypeVariables        #-}
 
+import           Network.HTTP.Types.Status
 import           Web.Spock
 import           Web.Spock.Config
-import           Network.HTTP.Types.Status
 
-import           Data.Aeson              hiding (json)
-import           Data.Monoid             ((<>))
+import           Control.Monad.Logger      (LoggingT, runStdoutLoggingT)
+import           Data.Aeson                hiding (json)
+import           Data.Monoid               ((<>))
+import           Data.Text                 (Text, pack)
+import qualified Data.Text                 as T
+import qualified Data.Text.Encoding        as T
+import qualified Data.Text.IO              as T
+import           Database.Persist          hiding (delete, get)
+import qualified Database.Persist          as P
+import           Database.Persist.Sqlite   hiding (delete, get)
 import           GHC.Generics
-import           Control.Monad.Logger    (LoggingT, runStdoutLoggingT)
-import           Database.Persist        hiding (get, delete)
-import qualified Database.Persist        as P
-import           Database.Persist.Sqlite hiding (get, delete)
-import           Data.Text               (Text, pack)
-import qualified Data.Text               as T
-import qualified Data.Text.Encoding      as T
-import qualified Data.Text.IO            as T
 
 import           Model.CoreTypes
 
