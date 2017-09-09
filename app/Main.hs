@@ -1,13 +1,10 @@
-{-# LANGUAGE FlexibleContexts           #-}
-{-# LANGUAGE FlexibleInstances          #-}
-{-# LANGUAGE GADTs                      #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE MultiParamTypeClasses      #-}
-{-# LANGUAGE OverloadedStrings          #-}
-{-# LANGUAGE QuasiQuotes                #-}
-{-# LANGUAGE ScopedTypeVariables        #-}
-{-# LANGUAGE TemplateHaskell            #-}
-{-# LANGUAGE TypeFamilies               #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE GADTs                 #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE TypeFamilies          #-}
 
 import           Network.HTTP.Types.Status
 import           Web.Spock
@@ -35,7 +32,7 @@ import qualified Web.JWT                   as JWT
 
 import           Model.CoreTypes
 import           Model.JsonTypes
-import qualified Util                      as Util
+import qualified Util
 
 type Api = SpockM SqlBackend () () ()
 
@@ -62,13 +59,13 @@ errorHandler notFound404 = do
     text "Sorry, nothing found :/"
 errorHandler s = do
     setStatus s
-    text $ (T.pack . show $ (statusCode s)) <> " - " <> T.decodeUtf8 (statusMessage s)
+    text $ (T.pack . show $ statusCode s) <> " - " <> T.decodeUtf8 (statusMessage s)
 
 main :: IO ()
 main = do
   pool <- runStdoutLoggingT $ createSqlitePool "api.db" 5
   spockCfg <- mySpockCfg () (PCPool pool) ()
-  runStdoutLoggingT $ runSqlPool (do runMigration migrateAll) pool
+  runStdoutLoggingT $ runSqlPool (runMigration migrateAll) pool
   runSpock 8124 (spock spockCfg app)
 
 corsHeader =
@@ -99,7 +96,7 @@ app =
         errorJson 2 "Could not find a person with matching id"
       Just thePerson -> do
         runSQL $ P.delete personId
-        text $ "Thanks for deleting the user"
+        text "Thanks for deleting the user"
   post "people" $ do
     maybePerson <- jsonBody :: ApiAction (Maybe Person)
     case maybePerson of
@@ -110,7 +107,7 @@ app =
         setStatus created201
         newId <- runSQL $ insert thePerson
         json $ object ["result" .= String "success", "id" .= newId]
-  options "auth" $ do
+  options "auth" $
     setHeader "Access-Control-Allow-Headers" "Content-Type"
   get "restricted" $ do
     maybeBearerToken <- header "Authorization"
@@ -148,8 +145,8 @@ app =
                       , "validFor" .= validFor
                       ]
   get "test" $ do
-    currentTime <- liftIO $ (getPOSIXTime)
-    text $ pack $ (show currentTime) <> (show $ currentTime + tokenTimeout + tokenGracePeriod)
+    currentTime <- liftIO getPOSIXTime
+    text $ pack $ show currentTime <> (show $ currentTime + tokenTimeout + tokenGracePeriod)
 
 textStringShow = text . pack . show
 
