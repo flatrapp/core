@@ -14,9 +14,8 @@ import           Database.Persist.Sqlite
 import           Database.Persist.TH
 import           Web.Spock
 
-type Api = SpockM SqlBackend () () ()
-
-type ApiAction a = SpockAction SqlBackend () () a
+type Api ctx = SpockCtxM ctx SqlBackend () () ()
+type ApiAction ctx a = SpockActionCtx ctx SqlBackend () () a
 
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|

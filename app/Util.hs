@@ -21,7 +21,7 @@ runSQL
   => SqlPersistT (LoggingT IO) a -> m a
 runSQL action = runQuery $ \conn -> runStdoutLoggingT $ runSqlConn action conn
 
-errorJson :: Int -> Text -> ApiAction ()
+errorJson :: Int -> Text -> ApiAction ctx a
 errorJson code message =
   json $
     object

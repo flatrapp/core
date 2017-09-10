@@ -3,7 +3,7 @@ version:             0.1.0.0
 -- synopsis:
 -- description:
 homepage:            https://github.com/githubuser/Spock-example#readme
-license:             Apache Version 2.0
+license:             Apache
 license-file:        LICENSE
 author:              Daniel Schäfer, Leon Schürmann
 maintainer:          flatrapp@danielschaefer.me
@@ -25,7 +25,6 @@ executable Spock-example-exe
   ghc-options:         -Wall -threaded -rtsopts -with-rtsopts=-N
   build-depends:       base
                      , Spock >=0.11
-                     , Spock-core >=0.11
                      , text
                      , mtl
                      , aeson
@@ -40,6 +39,7 @@ executable Spock-example-exe
                      , transformers
                      , random
                      , configurator
+                     , hvect
   default-language:    Haskell2010
 
 test-suite Spock-example-test
