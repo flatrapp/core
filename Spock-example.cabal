@@ -22,9 +22,8 @@ library
 executable Spock-example-exe
   hs-source-dirs:      app
   main-is:             Main.hs
-  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  ghc-options:         -Wall -threaded -rtsopts -with-rtsopts=-N
   build-depends:       base
-                     , Spock-example
                      , Spock >=0.11
                      , Spock-core >=0.11
                      , text
@@ -54,4 +53,4 @@ test-suite Spock-example-test
 
 source-repository head
   type:     git
-  location: https://github.com/githubuser/Spock-example
+  location: https://github.com/flatrapp/core
