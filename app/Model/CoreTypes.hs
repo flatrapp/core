@@ -14,14 +14,11 @@ import           Data.Text           (Text, pack)
 import           Database.Persist.TH
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
-Person json
-  name Text
-  age Int
-  deriving Show
-
 User json
-  email Text
-  password Text
-  name Text
+  email     Text
+  password  Text
+  firstName Text
+  lastName  Text
+
   deriving Show
 |]

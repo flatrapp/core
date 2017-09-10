@@ -78,37 +78,35 @@ jwtSecret = "secret"
 app :: Api
 app =
   prehook corsHeader $ do
-  get "people" $ do
-    allPeople <- runSQL $ selectList [] [Asc PersonId]
-    json allPeople
-  get ("people" <//> var) $ \personId -> do
-    maybePerson <- runSQL $ P.get personId :: ApiAction (Maybe Person)
-    case maybePerson of
-      Nothing -> do
-        setStatus notFound404
-        errorJson 2 "Could not find a person with matching id"
-      Just thePerson -> json thePerson
-  delete ("people" <//> var) $ \(personId :: PersonId) -> do
-    maybePerson <- runSQL $ P.get personId :: ApiAction (Maybe Person)
-    case maybePerson of
-      Nothing -> do
-        setStatus notFound404
-        errorJson 2 "Could not find a person with matching id"
-      Just thePerson -> do
-        runSQL $ P.delete personId
-        text "Thanks for deleting the user"
-  post "people" $ do
-    maybePerson <- jsonBody :: ApiAction (Maybe Person)
-    case maybePerson of
-      Nothing -> do
-        setStatus badRequest400
-        errorJson 1 "Failed to parse request body as Person"
-      Just thePerson -> do
-        setStatus created201
-        newId <- runSQL $ insert thePerson
-        json $ object ["result" .= String "success", "id" .= newId]
+  -- Allow for pre-flight AJAX requests
   options "auth" $
     setHeader "Access-Control-Allow-Headers" "Content-Type"
+  get "users" $ do
+    allUsers <- runSQL $ selectList [] [Asc UserId]
+    json allUsers
+  get ("users" <//> var) $ \userId -> do
+    maybeUser <- runSQL $ P.get userId :: ApiAction (Maybe User)
+    case maybeUser of
+      Nothing -> do
+        setStatus notFound404
+        errorJson 2 "Could not find a user with matching id"
+      Just theUser -> json theUser
+  get ("users" <//> var) $ \(email :: Text) -> do
+    maybeUser <- runSQL $ P.selectFirst [UserEmail ==. email] []-- :: ApiAction (Maybe User)
+    case maybeUser of
+      Nothing -> do
+        setStatus notFound404
+        errorJson 2 "Could not find a user with matching email"
+      Just theUser -> json theUser
+  delete ("user" <//> var) $ \(userId :: UserId) -> do
+    maybeUser <- runSQL $ P.get userId :: ApiAction (Maybe User)
+    case maybeUser of
+      Nothing -> do
+        setStatus notFound404
+        errorJson 2 "Could not find a user with matching id"
+      Just theUser -> do
+        runSQL $ P.delete userId
+        text "Thanks for deleting the user"
   get "restricted" $ do
     maybeBearerToken <- header "Authorization"
     case maybeBearerToken of
@@ -124,6 +122,16 @@ app =
                 Just signature -> do
                   textStringShow signature
                   --text $ "Welome!"
+  post "users" $ do
+    maybeRegistration <- jsonBody :: ApiAction (Maybe User)
+    case maybeRegistration of
+      Nothing -> do
+        setStatus badRequest400
+        errorJson 1 "Failed to parse request body as User"
+      Just user -> do
+        setStatus created201
+        newId <- runSQL $ insert user
+        json $ object ["result" .= String "success", "id" .= newId]
   post "auth" $ do
     maybeLogin <- jsonBody :: ApiAction (Maybe LoginCredentials)
     case maybeLogin of
