@@ -1,2 +1,4 @@
-.stack-work/
-api.db
+/.stack-work/
+*.db
+*.cfg
+*.db*

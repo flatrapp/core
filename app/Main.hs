@@ -33,6 +33,7 @@ import qualified Web.JWT                   as JWT
 import           Model.CoreTypes
 import           Model.JsonTypes
 import qualified Util
+import qualified Config
 
 type Api = SpockM SqlBackend () () ()
 
@@ -63,10 +64,11 @@ errorHandler s = do
 
 main :: IO ()
 main = do
-  pool <- runStdoutLoggingT $ createSqlitePool "api.db" 5
+  cfg <- Config.parseConfig "flatrapp.cfg"
+  pool <- runStdoutLoggingT $ createSqlitePool (Config.db cfg) 5
   spockCfg <- mySpockCfg () (PCPool pool) ()
   runStdoutLoggingT $ runSqlPool (runMigration migrateAll) pool
-  runSpock 8124 (spock spockCfg app)
+  runSpock (Config.port cfg) (spock spockCfg app)
 
 corsHeader =
   do ctx <- getContext
