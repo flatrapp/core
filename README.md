@@ -1,4 +1,4 @@
-# Spock-example
+# Flatr-App-Core
 
 Configure:
 
@@ -16,4 +16,4 @@ Build:
 
 Run:
 
-`$ stack exec Spock-example-exe`
+`$ stack exec Flatr-App-Core-exe`
