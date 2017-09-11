@@ -10,6 +10,7 @@
 module Model.CoreTypes where
 
 import           Data.Text               (Text)
+import           Data.Time.Clock         (UTCTime)
 import           Database.Persist.Sqlite
 import           Database.Persist.TH
 import           Web.Spock
@@ -26,4 +27,9 @@ User json
   lastName  Text
 
   deriving Show
+
+Token
+  userId     UserId
+  tokenId    Text
+  validUntil UTCTime
 |]

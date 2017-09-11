@@ -16,7 +16,10 @@ import           Data.Monoid                      ((<>))
 import           Data.Text                        (Text, pack)
 import qualified Data.Text                        as T
 import qualified Data.Text.Encoding               as T
-import           Data.Time.Clock.POSIX            (POSIXTime, getPOSIXTime)
+import           Data.Time.Clock.POSIX            (POSIXTime, getPOSIXTime,
+                                                   posixSecondsToUTCTime)
+import qualified Database.Persist                 as P
+import           Database.Persist.Sql             hiding (delete, get)
 import           Database.Persist.Sqlite          (SqlBackend)
 import           Model.CoreTypes
 import           Model.JsonTypes.LoginCredentials
@@ -49,17 +52,26 @@ app =
         Just loginCredentials -> do
           currentTime <- liftIO getPOSIXTime
           let validFor = tokenTimeout + tokenGracePeriod
+          let validUntil = validFor + currentTime
           tokenId <- liftIO $ Util.randomText 64
           let key = JWT.secret jwtSecret
-          let cs = JWT.def { JWT.exp = JWT.numericDate $ currentTime + validFor
+          let cs = JWT.def { JWT.exp = JWT.numericDate validUntil
                            , JWT.jti = JWT.stringOrURI tokenId
                            , JWT.sub = JWT.stringOrURI $ email loginCredentials
                            }
-          let jwt = JWT.encodeSigned JWT.HS256 key cs
-          json $ object [ "token"    .= jwt
-                        , "tokenId"  .= tokenId
-                        , "validFor" .= validFor
-                        ]
+          maybeUser<- Util.runSQL $ P.selectFirst [UserEmail ==. email loginCredentials] []
+          -- TODO check password and throw invalid credentials instead of
+          -- this user does not exist
+          case maybeUser of
+            Nothing -> do
+              setStatus forbidden403
+              Util.errorJson 5 "This user does not exist"
+            Just (Entity userId _) -> do
+              newId <- Util.runSQL $ insert $ Token userId tokenId $ posixSecondsToUTCTime validUntil
+              json $ object [ "token"    .= JWT.encodeSigned JWT.HS256 key cs
+                            , "tokenId"  .= tokenId
+                            , "validFor" .= validFor
+                            ]
     get "test" $ do
       currentTime <- liftIO getPOSIXTime
       text $ pack $ show currentTime <> (show $ currentTime + tokenTimeout + tokenGracePeriod)
@@ -105,10 +117,20 @@ authHook = do
         setStatus unauthorized401
         Util.errorJson 3 "Please authorize yourself"
       Just bearerToken -> do
-        let maybeToken = JWT.decodeAndVerifySignature (JWT.secret jwtSecret) bearerToken
-        case maybeToken of
-          Nothing -> do
-            setStatus forbidden403
-            Util.errorJson 4 "You are not allowed here"
+        let token = JWT.jti =<< JWT.claims <$>
+                      JWT.decodeAndVerifySignature (JWT.secret jwtSecret) bearerToken
+        case token of
+          Nothing -> text "Token invalid"
           Just token -> do
-            return (token :&: oldCtx)
+            let tokenText = pack . show $ token
+            maybeT <- Util.runSQL $ P.selectFirst [TokenTokenId ==. tokenText] []
+            case maybeT of
+              Nothing -> text "You're not logged in"
+              Just t -> text "You're in"
+        --let maybeUserId =
+        --case maybeUserId of
+        --  Nothing -> do
+        --    setStatus forbidden403
+        --    Util.errorJson 4 "You are not allowed here"
+        --  Just token -> do
+        --    return (token :&: oldCtx)
