@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 
-module Model.JsonTypes where
+module Model.JsonTypes.LoginCredentials where
 
 import           Data.Aeson   hiding (json)
 import           Data.Text    (Text)

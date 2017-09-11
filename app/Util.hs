@@ -27,4 +27,3 @@ errorJson code message =
     object
     [ "error" .= object ["code" .= code, "message" .= message]
     ]
-
