@@ -39,9 +39,8 @@ app =
     routeUsers
     prehook authHook $ do
       get "restricted" $ do
-        (signature :: JWT.JWT JWT.VerifiedJWT) <- liftM findFirst getContext
-        let claims  = JWT.sub $ JWT.claims signature
-        textStringShow claims
+        (subject :: Text) <- liftM findFirst getContext
+        textStringShow subject
         text $ "Welome!"
     post "auth" $ do
       maybeLogin <- jsonBody :: ApiAction ctx (Maybe LoginCredentials)
@@ -108,7 +107,7 @@ errorHandler status
         <> " - "
         <> T.decodeUtf8 (statusMessage status)
 
-authHook :: ApiAction (HVect xs) (HVect ((JWT.JWT JWT.VerifiedJWT) ': xs))
+authHook :: ApiAction (HVect xs) (HVect ((Text) ': xs))
 authHook = do
     oldCtx <- getContext
     maybeBearerToken <- header "Authorization"
@@ -117,20 +116,15 @@ authHook = do
         setStatus unauthorized401
         Util.errorJson 3 "Please authorize yourself"
       Just bearerToken -> do
-        let token = JWT.jti =<< JWT.claims <$>
+        let maybeClaims = JWT.claims <$>
                       JWT.decodeAndVerifySignature (JWT.secret jwtSecret) bearerToken
-        case token of
+        let maybeTokenId = JWT.jti =<< maybeClaims
+        let maybeSubject = JWT.sub =<< maybeClaims
+        case (maybeTokenId `Util.maybeTuple` maybeSubject) of
           Nothing -> text "Token invalid"
-          Just token -> do
-            let tokenText = pack . show $ token
-            maybeT <- Util.runSQL $ P.selectFirst [TokenTokenId ==. tokenText] []
+          Just (tokenId, subject) -> do
+            let tokenIdText = pack . show $ tokenId -- make typesafe with signature
+            maybeT <- Util.runSQL $ P.selectFirst [TokenTokenId ==. tokenIdText] []
             case maybeT of
               Nothing -> text "You're not logged in"
-              Just t -> text "You're in"
-        --let maybeUserId =
-        --case maybeUserId of
-        --  Nothing -> do
-        --    setStatus forbidden403
-        --    Util.errorJson 4 "You are not allowed here"
-        --  Just token -> do
-        --    return (token :&: oldCtx)
+              Just t -> return $ (pack . show $ subject) :&: oldCtx

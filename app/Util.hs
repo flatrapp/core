@@ -27,3 +27,13 @@ errorJson code message =
     object
     [ "error" .= object ["code" .= code, "message" .= message]
     ]
+
+maybeToEither :: e -> Maybe a -> Either e a
+maybeToEither e Nothing = Left e
+maybeToEither e (Just value) = Right value
+--maybeToEither = flip maybe Right . Left
+
+maybeTuple :: Maybe a -> Maybe b -> Maybe (a, b)
+maybeTuple Nothing _ = Nothing
+maybeTuple _ Nothing = Nothing
+maybeTuple (Just a) (Just b) = Just (a, b)
