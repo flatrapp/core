@@ -2,9 +2,13 @@
 
 module Model.JsonTypes.User where
 
-import           Data.Aeson   hiding (json)
-import           Data.Text    (Text)
+import           Data.Aeson           hiding (json)
+import           Data.Text            (Text)
+import           Database.Persist.Sql
 import           GHC.Generics
+import qualified Model.CoreTypes      as SqlT
+import           Prelude              hiding (id)
+import qualified Util
 
 data User =
     User { id        :: Integer
@@ -13,5 +17,13 @@ data User =
          , lastName  :: Text
          } deriving (Show, Generic)
 
-instance FromJSON User
 instance ToJSON User
+
+jsonUser :: Entity SqlT.User -> User
+jsonUser (Entity userId user) =
+    User { id        = Util.integerKey userId
+         , email     = SqlT.userEmail user
+         , firstName = SqlT.userFirstName user
+         , lastName  = SqlT.userLastName user
+         }
+

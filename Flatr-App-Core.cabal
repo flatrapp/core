@@ -43,6 +43,7 @@ executable Flatr-App-Core-exe
                      , word8
                      , bytestring
                      , base16-bytestring >=0.1
+                     , cryptohash >=0.11
   default-language:    Haskell2010
 
 test-suite Flatr-App-Core-test

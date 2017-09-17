@@ -1,14 +1,18 @@
-{-# LANGUAGE GADTs             #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE TypeFamilies          #-}
 
 module Util where
 
 import           Control.Monad
 import           Control.Monad.Logger    (LoggingT, runStdoutLoggingT)
+import qualified Crypto.Hash.SHA512      as SHA
 import           Data.Aeson              hiding (json)
 import qualified Data.ByteString         as BS
 import qualified Data.ByteString.Base16  as B16
-import           Data.Text               (Text, pack)
+import           Data.Text               (Text)
 import qualified Data.Text.Encoding      as T
 import           Data.Word8
 import           Database.Persist.Sqlite
@@ -36,6 +40,10 @@ makeHex = T.decodeUtf8 . B16.encode
 decodeHex :: Text -> BS.ByteString
 decodeHex = fst . B16.decode . T.encodeUtf8
 
+hashPassword :: Text -> BS.ByteString -> Text
+hashPassword password salt =
+     makeHex . SHA.finalize $ SHA.updates SHA.init [salt, T.encodeUtf8 password]
+
 runSQL
   :: (HasSpock m, SpockConn m ~ SqlBackend)
   => SqlPersistT (LoggingT IO) a -> m a
@@ -57,3 +65,6 @@ maybeTuple :: Maybe a -> Maybe b -> Maybe (a, b)
 maybeTuple Nothing _         = Nothing
 maybeTuple _ Nothing         = Nothing
 maybeTuple (Just a) (Just b) = Just (a, b)
+
+integerKey :: (Num n, ToBackendKey SqlBackend record) => Key record -> n
+integerKey = fromIntegral . fromSqlKey

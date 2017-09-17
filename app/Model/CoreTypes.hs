@@ -23,6 +23,7 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 User json
   email     Text
   password  Text
+  salt      Text
   firstName Text
   lastName  Text
 
