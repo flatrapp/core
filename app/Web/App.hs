@@ -24,6 +24,7 @@ import           Database.Persist.Sqlite          (SqlBackend)
 import           Model.CoreTypes
 import           Model.JsonTypes.LoginCredentials
 import           Network.HTTP.Types.Status
+import           System.Random
 import qualified Util
 import           Web.Endpoints.Users
 import qualified Web.JWT                          as JWT
@@ -52,7 +53,8 @@ app =
           currentTime <- liftIO getPOSIXTime
           let validFor = tokenTimeout + tokenGracePeriod
           let validUntil = validFor + currentTime
-          tokenId <- liftIO $ Util.randomText 64
+          gen <- liftIO $ getStdGen
+          let tokenId =  Util.randomText 64 gen
           let key = JWT.secret jwtSecret
           let cs = JWT.def { JWT.exp = JWT.numericDate validUntil
                            , JWT.jti = JWT.stringOrURI tokenId
@@ -127,4 +129,4 @@ authHook = do
             maybeT <- Util.runSQL $ P.selectFirst [TokenTokenId ==. tokenIdText] []
             case maybeT of
               Nothing -> text "You're not logged in"
-              Just t -> return $ (pack . show $ subject) :&: oldCtx
+              Just t  -> return $ (pack . show $ subject) :&: oldCtx
