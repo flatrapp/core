@@ -6,7 +6,7 @@
 
 module Util where
 
-import           Control.Monad
+import           Control.Arrow
 import           Control.Monad.Logger    (LoggingT, runStdoutLoggingT)
 import qualified Crypto.Hash.SHA512      as SHA
 import           Data.Aeson              hiding (json)
@@ -57,7 +57,7 @@ data JsonError
   | NoUserWithEmail
   | BadRequest deriving (Show)
 
-conv x = (T.pack . fst $ conv' x, T.pack . snd $ conv' x)  -- TODO refactor
+conv x = (T.pack *** T.pack) (conv' x)
   where
   conv' InvalidRequest    = ("invalid_request", "Invalid request.")
   conv' UserPasswordWrong = ("user_password_wrong", "User does not exist or password is wrong")
@@ -67,19 +67,16 @@ conv x = (T.pack . fst $ conv' x, T.pack . snd $ conv' x)  -- TODO refactor
   conv' BadRequest        = ("bad_request", "Bad request. Not understood.")
 
 errorJson :: JsonError -> ApiAction ctx a
-errorJson error =
+errorJson err =
   json $
     object
     [ "error" .= object [
-        "code" .= (fst $ conv error),
-        "message" .= (fst $ conv error)
+        "code" .= fst (conv err),
+        "message" .= snd (conv err)
       ]
     ]
 
-maybeToEither :: e -> Maybe a -> Either e a
-maybeToEither e Nothing      = Left e
-maybeToEither e (Just value) = Right value
---maybeToEither = flip maybe Right . Left
+maybeToEither = flip maybe Right . Left
 
 maybeTuple :: Maybe a -> Maybe b -> Maybe (a, b)
 maybeTuple Nothing _         = Nothing

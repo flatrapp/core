@@ -8,7 +8,6 @@
 
 module Web.App where
 
-import           Control.Monad
 import           Control.Monad.IO.Class
 import           Data.HVect                       hiding (pack)
 import           Data.Monoid                      ((<>))
@@ -35,11 +34,11 @@ app =
   prehook corsHeader $
   prehook initHook $ do
     routeUsers
-    prehook authHook $ do
+    prehook authHook $
       get "secret" $ do
-        (subject :: Text) <- liftM findFirst getContext
+        (subject :: Text) <- fmap findFirst getContext
         textStringShow subject
-        text $ "Welome!"
+        text "Welome!"
     routeAuth
     get "test" $ do
       currentTime <- liftIO getPOSIXTime
@@ -68,7 +67,7 @@ errorHandler status
         <> " - "
         <> T.decodeUtf8 (statusMessage status)
 
-authHook :: ApiAction (HVect xs) (HVect ((Text) ': xs))
+authHook :: ApiAction (HVect xs) (HVect (Text ': xs))
 authHook = do
     oldCtx <- getContext
     maybeBearerToken <- header "Authorization"
@@ -81,7 +80,7 @@ authHook = do
                       JWT.decodeAndVerifySignature (JWT.secret jwtSecret) bearerToken
         let maybeTokenId = JWT.jti =<< maybeClaims
         let maybeSubject = JWT.sub =<< maybeClaims
-        case (maybeTokenId `Util.maybeTuple` maybeSubject) of
+        case maybeTokenId `Util.maybeTuple` maybeSubject of
           Nothing -> text "Token invalid"
           Just (tokenId, subject) -> do
             let tokenIdText = pack . show $ tokenId -- make typesafe with signature

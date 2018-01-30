@@ -7,19 +7,13 @@
 
 module Web.Endpoints.Auth where
 
-import           Control.Monad
 import           Control.Monad.IO.Class
 import           Data.Aeson                       hiding (json)
-import           Data.HVect                       hiding (pack)
-import           Data.Monoid                      ((<>))
-import           Data.Text                        (Text, pack)
-import qualified Data.Text                        as T
-import qualified Data.Text.Encoding               as T
+import           Data.Text                        (Text)
 import           Data.Time.Clock.POSIX            (POSIXTime, getPOSIXTime,
                                                    posixSecondsToUTCTime)
 import qualified Database.Persist                 as P
 import           Database.Persist.Sql             hiding (delete, get)
-import           Database.Persist.Sqlite          (SqlBackend)
 import           Model.CoreTypes
 import           Model.JsonTypes.LoginCredentials
 import           Network.HTTP.Types.Status
@@ -28,7 +22,7 @@ import qualified Util
 import qualified Web.JWT                          as JWT
 import           Web.Spock
 
-routeAuth = do
+routeAuth =
   post "auth" $ do
     maybeLogin <- jsonBody :: ApiAction ctx (Maybe LoginCredentials)
     case maybeLogin of
@@ -39,7 +33,7 @@ routeAuth = do
         currentTime <- liftIO getPOSIXTime
         let validFor = tokenTimeout + tokenGracePeriod
         let validUntil = validFor + currentTime
-        gen <- liftIO $ getStdGen
+        gen <- liftIO getStdGen
         let tokenId =  Util.randomText 64 gen
         let key = JWT.secret jwtSecret
         let cs = JWT.def { JWT.exp = JWT.numericDate validUntil
