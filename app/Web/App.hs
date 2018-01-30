@@ -39,7 +39,7 @@ app =
   prehook initHook $ do
     routeUsers
     prehook authHook $ do
-      get "restricted" $ do
+      get "secret" $ do
         (subject :: Text) <- liftM findFirst getContext
         textStringShow subject
         text $ "Welome!"
@@ -48,7 +48,7 @@ app =
       case maybeLogin of
         Nothing -> do
           setStatus badRequest400
-          Util.errorJson 3 "Invalid request"
+          Util.errorJson Util.InvalidRequest
         Just loginCredentials -> do
           currentTime <- liftIO getPOSIXTime
           let validFor = tokenTimeout + tokenGracePeriod
@@ -66,7 +66,7 @@ app =
           case maybeUser of
             Nothing -> do
               setStatus forbidden403
-              Util.errorJson 5 "This user does not exist"
+              Util.errorJson Util.UserPasswordWrong
             Just (Entity userId _) -> do
               newId <- Util.runSQL $ insert $ Token userId tokenId $ posixSecondsToUTCTime validUntil
               json $ object [ "token"    .= JWT.encodeSigned JWT.HS256 key cs
@@ -116,7 +116,7 @@ authHook = do
     case maybeBearerToken of
       Nothing -> do
         setStatus unauthorized401
-        Util.errorJson 3 "Please authorize yourself"
+        Util.errorJson Util.Unauthorized
       Just bearerToken -> do
         let maybeClaims = JWT.claims <$>
                       JWT.decodeAndVerifySignature (JWT.secret jwtSecret) bearerToken

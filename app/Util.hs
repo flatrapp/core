@@ -12,19 +12,19 @@ import qualified Crypto.Hash.SHA512      as SHA
 import           Data.Aeson              hiding (json)
 import qualified Data.ByteString         as BS
 import qualified Data.ByteString.Base16  as B16
-import           Data.Text               (Text)
-import qualified Data.Text.Encoding      as T
-import           Data.Word8
+import qualified Data.Text               as T
+import qualified Data.Text.Encoding      as E
+import qualified Data.Word8
 import           Database.Persist.Sqlite
 import           Model.CoreTypes
 import           Prelude                 hiding (length)
 import           System.Random
 import           Web.Spock
 
-randomText :: Int -> StdGen -> Text
+randomText :: Int -> StdGen -> T.Text
 randomText len gen  = makeHex $ randomBS len gen
 
-randomBytes :: Int -> StdGen -> [Word8]
+randomBytes :: Int -> StdGen -> [Data.Word8.Word8]
 randomBytes 0 _ = []
 randomBytes ct g =
     let (value, nextG) = next g
@@ -34,26 +34,46 @@ randomBS :: Int -> StdGen -> BS.ByteString
 randomBS len g =
     BS.pack $ randomBytes len g
 
-makeHex :: BS.ByteString -> Text
-makeHex = T.decodeUtf8 . B16.encode
+makeHex :: BS.ByteString -> T.Text
+makeHex = E.decodeUtf8 . B16.encode
 
-decodeHex :: Text -> BS.ByteString
-decodeHex = fst . B16.decode . T.encodeUtf8
+decodeHex :: T.Text -> BS.ByteString
+decodeHex = fst . B16.decode . E.encodeUtf8
 
-hashPassword :: Text -> BS.ByteString -> Text
+hashPassword :: T.Text -> BS.ByteString -> T.Text
 hashPassword password salt =
-     makeHex . SHA.finalize $ SHA.updates SHA.init [salt, T.encodeUtf8 password]
+     makeHex . SHA.finalize $ SHA.updates SHA.init [salt, E.encodeUtf8 password]
 
 runSQL
   :: (HasSpock m, SpockConn m ~ SqlBackend)
   => SqlPersistT (LoggingT IO) a -> m a
 runSQL action = runQuery $ \conn -> runStdoutLoggingT $ runSqlConn action conn
 
-errorJson :: Int -> Text -> ApiAction ctx a
-errorJson code message =
+data JsonError
+  = InvalidRequest
+  | UserPasswordWrong
+  | Unauthorized
+  | NoUserWithId
+  | NoUserWithEmail
+  | BadRequest deriving (Show)
+
+conv x = (T.pack . fst $ conv' x, T.pack . snd $ conv' x)  -- TODO refactor
+  where
+  conv' InvalidRequest    = ("invalid_request", "Invalid request.")
+  conv' UserPasswordWrong = ("user_password_wrong", "User does not exist or password is wrong")
+  conv' Unauthorized      = ("aunauthorized", "Unauthorized.")
+  conv' NoUserWithId      = ("no_user_with_id", "No user exists with this ID.")
+  conv' NoUserWithEmail   = ("no_user_with_email", "No user exists with this Email address")
+  conv' BadRequest        = ("bad_request", "Bad request. Not understood.")
+
+errorJson :: JsonError -> ApiAction ctx a
+errorJson error =
   json $
     object
-    [ "error" .= object ["code" .= code, "message" .= message]
+    [ "error" .= object [
+        "code" .= (fst $ conv error),
+        "message" .= (fst $ conv error)
+      ]
     ]
 
 maybeToEither :: e -> Maybe a -> Either e a

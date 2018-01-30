@@ -1,0 +1,150 @@
+#%RAML 1.0
+title: FlatrApp API
+version: v0.1
+mediaType: application/json
+protocols: [ HTTP ]
+
+traits:
+  restricted:
+    headers:
+      Authorization:
+        description: Auth token
+
+types:
+  User:
+    type: object
+    properties:
+      id: integer
+      firstName: string
+      lastName: string
+  AuthRequest:
+    type: object
+    properties:
+      email: string
+      password: string
+  TokenResponse:
+    type: object
+    properties:
+      token: string
+      tokenId: string
+      validFor: integer
+  Error:
+    type: object
+    properties:
+      error:
+        type: object
+        properties:
+          code: string
+          message: string
+
+/auth:
+  post:
+    description: Authenticate yourself
+    body:
+      type: AuthRequest
+      example: |
+        {
+          "email": "max@mustermann.de",
+          "password": "pa$$w0rd"
+        }
+    responses:
+      200:
+        body:
+          type: TokenResponse
+          example: |
+            {
+              "token": "lkjaf;kajsfaksfj;adskfj",
+              "tokenId": "kaj;fkajsdfj;",
+              "validFor": 3660
+            }
+      400:
+        body:
+          type: Error
+          example: |
+            {
+              "error": {
+                "code": "bad_request",
+                "message": "Bad request"
+              }
+            }
+      403:
+        body:
+          type: Error
+          example: |
+            {
+              "error": {
+                "code": "user_password_wrong",
+                "message": "User does not exist or password is wrong"
+              }
+            }
+/secret:
+  get:
+    is: [ restricted ]
+    description: |
+      Endpoint which is only available when authenticated (for testing purposes only)
+      body:
+        text/plain: |
+          Welcome!
+/test:
+  get:
+    description: |
+      Is an endpoint for testing stuff. May return anything at all but does not require authentication
+/users:
+  get:
+    description: Get all users
+    responses:
+      200:
+        body:
+          type: User[]
+          example: |
+            [{
+              "id": 1,
+              "firstName": "Daniel",
+              "lastName": "Schäfer"
+            }]
+  post:
+  /{userId}:
+    get:
+      description: |
+        Get the user with this Id
+        responses:
+          200:
+            body:
+              type: User
+          404:
+            body:
+              type: Error
+              example: |
+                {
+                  "error": {
+                    "code": "user_nonexistant",
+                    "message": "Could not find a user with matching id"
+                  }
+                }
+    delete:
+      description: |
+        Delete the user with this id
+        responses:
+          200:
+            body:
+              text/plain:
+                example: |
+                  Thanks for deleting the user
+  /{email}:
+    get:
+      description: |
+        Get the user with this email address
+      responses:
+        200:
+          body:
+            type: User
+        404:
+          body:
+            type: Error
+            example: |
+              {
+                "error": {
+                  "code": "user_nonexistant",
+                  "message": "Could not find a user with matching email"
+                }
+              }

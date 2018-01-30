@@ -32,21 +32,21 @@ routeUsers = do
     case JsonUser.jsonUser <$> maybeUser of
       Nothing -> do
         setStatus notFound404
-        errorJson 2 "Could not find a user with matching id"
+        errorJson Util.NoUserWithId
       Just theUser -> json theUser
   get ("users" <//> var) $ \(email :: Text) -> do
     maybeUser <- runSQL $ P.selectFirst [SqlT.UserEmail ==. email] []
     case JsonUser.jsonUser <$> maybeUser of
       Nothing -> do
         setStatus notFound404
-        errorJson 2 "Could not find a user with matching email"
+        errorJson Util.NoUserWithEmail
       Just theUser -> json theUser
   delete ("user" <//> var) $ \(userId :: SqlT.UserId) -> do
     maybeUser <- runSQL $ P.get userId :: SqlT.ApiAction ctx (Maybe SqlT.User)
     case maybeUser of
       Nothing -> do
         setStatus notFound404
-        errorJson 2 "Could not find a user with matching id"
+        errorJson Util.NoUserWithId
       Just _theUser -> do
         runSQL $ P.delete userId
         text "Thanks for deleting the user"
@@ -55,7 +55,7 @@ routeUsers = do
     case maybeRegistration of
       Nothing -> do
         setStatus badRequest400
-        errorJson 1 "Failed to parse request body as User"
+        errorJson Util.BadRequest
       Just registration -> do
         setStatus created201
         gen <- liftIO getStdGen
