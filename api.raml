@@ -37,6 +37,192 @@ types:
           code: string
           message: string
 
+  Turn:
+    type: object
+    properties:
+      userId: integer
+      date: datetime-only
+
+  Task:
+    type: object
+    properties:
+      id?: integer
+      title: string
+      frequency:
+        type: integer
+        description: Number of days between two executions of this task
+      completionTime:
+        type: integer
+        description: Time to be allowed for the task to be completed in hours
+      users:
+        type: integer[]
+        description: All users that will have to complete this task at one point or another
+      nextTurn?:
+        type: Turn
+
+/tasks:
+  get:
+    description: |
+      List all tasks
+      responses:
+        200:
+          body:
+            type: Task[]
+            properties:
+            example: |
+              [{
+                "id": 1,
+                "title": "Doing the dishes",
+                "frequency": 3,
+                "completionTime": 5,
+                "users": [
+                  1
+                ],
+                "nextTurn": {
+                  "userId": 1,
+                  "date": "2015-07-04T21:00:00"
+                }
+              }]
+  post:
+    description: |
+      Add a new task
+    body:
+      type: Task
+      example: |
+        {
+          "title": "Doing the dishes",
+          "frequency": 3,
+          "completionTime": 5,
+          "users": [
+            1
+          ]
+        }
+    responses:
+      201:
+        headers:
+          Location:
+            description: URL of the newly created task
+        body:
+          type: Task
+          example: |
+            {
+              "id": 1,
+              "title": "Doing the dishes",
+              "frequency": 3,
+              "completionTime": 5,
+              "users": [
+                1
+              ],
+              "nextTurn": {
+                "userId": 1,
+                "date": "2015-07-04T21:00:00"
+              }
+            }
+      400:
+        body:
+          type: Error
+          example: |
+            {
+              "error": {
+                "code": "bad_request",
+                "message": "Bad request"
+              }
+            }
+  /{taskId}:
+    get:
+      description: |
+        Get detailed information about a task
+      responses:
+        200:
+          body:
+            type: Task
+            example: |
+              {
+                "id": 1,
+                "title": "Doing the dishes",
+                "frequency": 3,
+                "completionTime": 5,
+                "users": [
+                  1
+                ],
+                "nextTurn": {
+                  "userId": 1,
+                  "date": "2015-07-04T21:00:00"
+                }
+              }
+        404:
+          body:
+            type: Error
+            example: |
+              {
+                "error": {
+                  "code": "task_not_found",
+                  "message": "The task was not found"
+                }
+              }
+    delete:
+      description: |
+        Delete a task
+      responses:
+        204:
+          description: |
+            Task was successfully deleted
+        404:
+          body:
+            type: Error
+            example: |
+              {
+                "error": {
+                  "code": "task_not_found",
+                  "message": "The task was not found"
+                }
+              }
+    put:
+      description: |
+        Update a task and return the same one
+      body:
+        type: Task
+        example: |
+          {
+            "title": "Doing the dishes",
+            "frequency": 3,
+            "completionTime": 5,
+            "users": [
+              1
+            ]
+          }
+      responses:
+        200:
+          headers:
+            Location:
+              description: URL of the newly created task
+          body:
+            type: Task
+            example: |
+              {
+                "id": 1,
+                "title": "Doing the dishes",
+                "frequency": 3,
+                "completionTime": 5,
+                "users": [
+                  1
+                ],
+                "nextTurn": {
+                  "userId": 1,
+                  "date": "2015-07-04T21:00:00"
+                }
+              }
+        404:
+          body:
+            type: Error
+            example: |
+              {
+                "error": {
+                  "code": "task_not_found",
+                  "message": "The task was not found"
+                }
+              }
+
 /auth:
   post:
     description: Authenticate yourself
