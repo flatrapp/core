@@ -36,6 +36,7 @@ executable Flatr-App-Core-exe
                      , jwt
                      , containers
                      , time
+                     , iso8601-time
                      , transformers
                      , random
                      , configurator

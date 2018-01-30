@@ -60,6 +60,22 @@ types:
       nextTurn?:
         type: Turn
 
+  Info:
+    type: object
+    properties:
+      version:
+        type: string
+        example: "v0.1"
+
+/info:
+  get:
+    description: Get info about the API server
+    responses:
+      200:
+        body:
+          type: Info
+
+
 /tasks:
   get:
     description: |
@@ -68,7 +84,6 @@ types:
         200:
           body:
             type: Task[]
-            properties:
             example: |
               [{
                 "id": 1,

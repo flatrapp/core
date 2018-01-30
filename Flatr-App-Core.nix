@@ -2,7 +2,9 @@
 , configurator, containers, cryptohash, http-types
 , hvect, jwt, monad-logger, mtl, persistent, persistent-sqlite
 , persistent-template, random, Spock, stdenv, text, time
-, transformers, word8
+, transformers, word8, iso8601-time
+
+, stylish-haskell, hlint, hdevtools, ghc-mod
 , cabal-install
 }:
 mkDerivation {
@@ -16,7 +18,9 @@ mkDerivation {
     aeson base base16-bytestring bytestring configurator containers
     cryptohash http-types hvect jwt monad-logger mtl persistent
     persistent-sqlite persistent-template random Spock text time
-    transformers word8
+    transformers word8 iso8601-time
+
+    stylish-haskell hlint hdevtools ghc-mod
   ];
   testHaskellDepends = [ base ];
   buildDepends = [ cabal-install ];

@@ -1,5 +1,4 @@
 {-# LANGUAGE DataKinds           #-}
-{-# LANGUAGE FlexibleContexts    #-}
 {-# LANGUAGE GADTs               #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -22,8 +21,9 @@ import           Model.CoreTypes
 import qualified Web.JWT                          as JWT
 import           Network.HTTP.Types.Status
 import qualified Util
-import           Web.Endpoints.Users
 import           Web.Endpoints.Auth
+import           Web.Endpoints.Info
+import           Web.Endpoints.Users
 import           Web.Spock
 
 textStringShow :: (Show a) => a -> ActionCtxT ctx (WebStateM SqlBackend () ()) a
@@ -34,12 +34,13 @@ app =
   prehook corsHeader $
   prehook initHook $ do
     routeUsers
+    routeAuth
+    routeInfo
     prehook authHook $
       get "secret" $ do
         (subject :: Text) <- fmap findFirst getContext
         textStringShow subject
         text "Welome!"
-    routeAuth
     get "test" $ do
       currentTime <- liftIO getPOSIXTime
       text $ pack $ show currentTime <> (show $ currentTime + tokenTimeout + tokenGracePeriod)
