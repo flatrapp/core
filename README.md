@@ -24,7 +24,7 @@ Launch the nix shell
 
 
 ## Launching the nix shell
-Either launch it yourself with `$ nix-shell`
+Either launch it yourself with `$ nix-shell -I nixpkgs=https://github.com/NixOS/nixpkgs-channels/archive/nixos-17.09.tar.gz`
 
 or install [direnv](https://direnv.net)
 and allow it do be active in the directory `direnv allow`.
