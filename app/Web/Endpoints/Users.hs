@@ -4,24 +4,40 @@
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE DataKinds           #-}
+{-# LANGUAGE GADTs               #-}
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeOperators       #-}
 
 module Web.Endpoints.Users where
 
-import           Network.HTTP.Types.Status
-import           Web.Spock
-
 import           Control.Monad.IO.Class
 import           Data.Aeson                   hiding (json)
+import           Data.HVect                       hiding (pack)
+import           Data.Monoid                      ((<>))
+import           Data.Text                        (Text, pack)
 import           Data.Text                    (Text)
+import           Data.Time.Clock.POSIX            (getPOSIXTime)
 import           Database.Persist             hiding (delete, get)
-import qualified Database.Persist             as P
+import           Database.Persist.Sql             hiding (delete, get)
+import           Database.Persist.Sqlite          (SqlBackend)
+import           Model.CoreTypes
+import           Network.HTTP.Types.Status
 import           System.Random
-
+import           Util                         (errorJson, runSQL)
+import           Web.Endpoints.Auth
+import           Web.Endpoints.Info
+import           Web.Endpoints.Tasks
+import           Web.Spock
+import qualified Data.Text                        as T
+import qualified Data.Text.Encoding               as T
+import qualified Database.Persist             as P
 import qualified Model.CoreTypes              as SqlT
 import qualified Model.JsonTypes.Registration as JsonRegistration
 import qualified Model.JsonTypes.User         as JsonUser
-import           Util                         (errorJson, runSQL)
 import qualified Util
+import qualified Web.JWT                          as JWT
 
 routeUsers = do
   get "users" $ do

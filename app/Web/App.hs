@@ -23,6 +23,7 @@ import           Network.HTTP.Types.Status
 import qualified Util
 import           Web.Endpoints.Auth
 import           Web.Endpoints.Info
+import           Web.Endpoints.Tasks
 import           Web.Endpoints.Users
 import           Web.Spock
 import qualified Model.CoreTypes              as SqlT
@@ -37,10 +38,10 @@ app =
   prehook corsHeader $
   prehook initHook $ do
     routeAuth
+    routeTasks
+    routeInfo
+    routeUsers
     prehook authHook $ do
-      routeInfo
-      routeTasks
-      routeUsers
       get ("users" <//> "current") $ do  -- TODO move to Endpoints/Users.hs
         (email :: Text) <- fmap findFirst getContext
         maybeUser <- Util.runSQL $ P.selectFirst [SqlT.UserEmail ==. email] []

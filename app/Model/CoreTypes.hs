@@ -33,4 +33,19 @@ Token
   userId     UserId
   tokenId    Text
   validUntil UTCTime
+
+TaskUser
+  taskId TaskId
+  userId UserId
+  UniqueTaskUser taskId userId
+
+Turn json
+  userId UserId
+  date   UTCTime
+
+Task json
+  title          Text
+  frequency      Int
+  completionTime Int
+  nextTurn       TurnId
 |]

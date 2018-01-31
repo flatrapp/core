@@ -9,6 +9,8 @@ traits:
     headers:
       Authorization:
         description: Auth token
+        example: |
+          Bearer $token
 
 types:
   User:
@@ -357,6 +359,7 @@ types:
     get:
       description: |
         Get the currently logged in user
+      is: [ restricted ]
       responses:
         200:
           body:
