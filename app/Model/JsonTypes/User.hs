@@ -26,4 +26,3 @@ jsonUser (Entity userId user) =
          , firstName = SqlT.userFirstName user
          , lastName  = SqlT.userLastName user
          }
-

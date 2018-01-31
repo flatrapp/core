@@ -34,13 +34,6 @@ routeUsers = do
         setStatus notFound404
         errorJson Util.NoUserWithId
       Just theUser -> json theUser
-  get ("users" <//> var) $ \(email :: Text) -> do
-    maybeUser <- runSQL $ P.selectFirst [SqlT.UserEmail ==. email] []
-    case JsonUser.jsonUser <$> maybeUser of
-      Nothing -> do
-        setStatus notFound404
-        errorJson Util.NoUserWithEmail
-      Just theUser -> json theUser
   delete ("user" <//> var) $ \(userId :: SqlT.UserId) -> do
     maybeUser <- runSQL $ P.get userId :: SqlT.ApiAction ctx (Maybe SqlT.User)
     case maybeUser of

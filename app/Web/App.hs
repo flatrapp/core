@@ -25,6 +25,9 @@ import           Web.Endpoints.Auth
 import           Web.Endpoints.Info
 import           Web.Endpoints.Users
 import           Web.Spock
+import qualified Model.CoreTypes              as SqlT
+import qualified Model.JsonTypes.Registration as JsonRegistration
+import qualified Model.JsonTypes.User         as JsonUser
 
 textStringShow :: (Show a) => a -> ActionCtxT ctx (WebStateM SqlBackend () ()) a
 textStringShow = text . pack . show
@@ -33,20 +36,29 @@ app :: Api ()
 app =
   prehook corsHeader $
   prehook initHook $ do
-    routeUsers
     routeAuth
-    routeInfo
-    prehook authHook $
+    prehook authHook $ do
+      routeInfo
+      routeTasks
+      routeUsers
+      get ("users" <//> "current") $ do  -- TODO move to Endpoints/Users.hs
+        (email :: Text) <- fmap findFirst getContext
+        maybeUser <- Util.runSQL $ P.selectFirst [SqlT.UserEmail ==. email] []
+        case JsonUser.jsonUser <$> maybeUser of
+          Nothing -> do
+            setStatus notFound404
+            Util.errorJson Util.NoUserWithEmail
+          Just theUser -> json theUser
       get "secret" $ do
         (subject :: Text) <- fmap findFirst getContext
-        textStringShow subject
+        --textStringShow subject
         text "Welome!"
     get "test" $ do
       currentTime <- liftIO getPOSIXTime
       text $ pack $ show currentTime <> (show $ currentTime + tokenTimeout + tokenGracePeriod)
     -- Allow for pre-flight AJAX requests
     hookAny OPTIONS $ \_ ->
-      setHeader "Access-Control-Allow-Headers" "Content-Type"
+      setHeader "Access-Control-Allow-Headers" "Content-Type, Authorization"
 
 corsHeader :: ActionCtxT a (WebStateM SqlBackend () ()) a
 corsHeader =
