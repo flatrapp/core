@@ -47,7 +47,7 @@ routeAuth =
             Util.errorJson Util.UserPasswordWrong
           Just (Entity userId user) -> do
             let hashedPw = Util.hashPassword (password loginCredentials) (Util.decodeHex . userSalt $ user)
-            if hashedPw == userPassword user then do
+            if hashedPw /= userPassword user then do
               setStatus forbidden403
               Util.errorJson Util.UserPasswordWrong
             else do
