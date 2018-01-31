@@ -30,6 +30,22 @@ routeTasks = do
   get "tasks" $ do
     allTasks <- runSQL $ selectList [] [Asc SqlT.TaskId]
     json $ map JsonTask.jsonTask allTasks
+  get ("tasks" <//> var) $ \(taskId :: SqlT.TaskId) -> do
+    maybeTask <- runSQL $ P.selectFirst [SqlT.TaskId ==. taskId] []
+    case JsonTask.jsonTask <$> maybeTask of
+      Nothing -> do
+        setStatus notFound404
+        errorJson Util.TaskNotFound
+      Just theTask -> json theTask
+  delete ("tasks" <//> var) $ \(taskId :: SqlT.TaskId) -> do
+    maybeTask <- runSQL $ P.get taskId :: SqlT.ApiAction ctx (Maybe SqlT.Task)
+    case maybeTask of
+      Nothing -> do
+        setStatus notFound404
+        errorJson Util.TaskNotFound
+      Just _theTask -> do
+        runSQL $ P.delete taskId
+        text "Thanks for deleting the task"
   post "tasks" $ do
     maybeTask <- jsonBody :: SqlT.ApiAction ctx (Maybe JsonTask.Task)
     case maybeTask of

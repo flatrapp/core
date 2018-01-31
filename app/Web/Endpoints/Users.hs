@@ -47,14 +47,14 @@ routeUsers = do
     case JsonUser.jsonUser <$> maybeUser of
       Nothing -> do
         setStatus notFound404
-        errorJson Util.NoUserWithId
+        errorJson Util.UserNotFound
       Just theUser -> json theUser
   delete ("user" <//> var) $ \(userId :: SqlT.UserId) -> do
     maybeUser <- runSQL $ P.get userId :: SqlT.ApiAction ctx (Maybe SqlT.User)
     case maybeUser of
       Nothing -> do
         setStatus notFound404
-        errorJson Util.NoUserWithId
+        errorJson Util.UserNotFound
       Just _theUser -> do
         runSQL $ P.delete userId
         text "Thanks for deleting the user"

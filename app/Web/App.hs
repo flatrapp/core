@@ -48,7 +48,7 @@ app =
         case JsonUser.jsonUser <$> maybeUser of
           Nothing -> do
             setStatus notFound404
-            Util.errorJson Util.NoUserWithEmail
+            Util.errorJson Util.UserNotFound  -- shouldn't really happen
           Just theUser -> json theUser
       get "secret" $ do
         (subject :: Text) <- fmap findFirst getContext
