@@ -15,9 +15,17 @@ types:
     type: object
     properties:
       id: integer
+      email: string
       firstName: string
       lastName: string
-  AuthRequest:
+  Registration:
+    type: object
+    properties:
+      email: string
+      firstName: string
+      lastName: string
+      password: string
+  LoginCredentials:
     type: object
     properties:
       email: string
@@ -36,13 +44,11 @@ types:
         properties:
           code: string
           message: string
-
   Turn:
     type: object
     properties:
       userId: integer
       date: datetime-only
-
   Task:
     type: object
     properties:
@@ -59,7 +65,6 @@ types:
         description: All users that will have to complete this task at one point or another
       nextTurn?:
         type: Turn
-
   Info:
     type: object
     properties:
@@ -242,7 +247,7 @@ types:
   post:
     description: Authenticate yourself
     body:
-      type: AuthRequest
+      type: LoginCredentials
       example: |
         {
           "email": "max@mustermann.de",
@@ -304,6 +309,23 @@ types:
               "lastName": "Schäfer"
             }]
   post:
+    description: Register a new user
+    body:
+      type: Registration
+    responses:
+      200:
+        body:
+          type: User
+      400:
+        body:
+          type: Error
+          example: |
+            {
+              "error": {
+                "code": "bad_request",
+                "message": "Bad request"
+              }
+            }
   /{userId}:
     get:
       description: |
@@ -331,21 +353,21 @@ types:
               text/plain:
                 example: |
                   Thanks for deleting the user
-  /{email}:
+  /current:
     get:
       description: |
-        Get the user with this email address
+        Get the currently logged in user
       responses:
         200:
           body:
             type: User
-        404:
+        401:
           body:
             type: Error
             example: |
               {
                 "error": {
-                  "code": "user_nonexistant",
-                  "message": "Could not find a user with matching email"
+                  "code": "unauthorized",
+                  "message": "You are not authorized to query this information"
                 }
               }
