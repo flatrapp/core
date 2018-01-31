@@ -13,6 +13,7 @@ import qualified Data.Text                    as T
 import           Data.Time.Clock
 import           Database.Persist             hiding (delete, get)
 import qualified Database.Persist             as P
+import Text.Printf
 import           Network.HTTP.Types.Status
 import           System.Random
 import           Web.Spock
@@ -36,7 +37,6 @@ routeTasks = do
         setStatus badRequest400
         errorJson Util.BadRequest
       Just task -> do
-        setStatus created201
         -- post new Turn
         currentTime <- liftIO getCurrentTime
         allUsers <- runSQL $ selectKeysList [] [Asc SqlT.UserId]
@@ -51,4 +51,8 @@ routeTasks = do
         maybeTask <- runSQL $ selectFirst [SqlT.TaskId ==. taskId] []
         case JsonTask.jsonTask <$> maybeTask of
           Nothing -> error "I fucked up #1"
-          Just theTask -> json theTask
+          Just theTask -> do
+            setStatus created201
+            let foo :: T.Text = T.pack $ printf "/tasks/%d" (Util.integerKey taskId :: Integer)
+            setHeader "Location" foo
+            json theTask

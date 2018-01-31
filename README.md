@@ -1,6 +1,6 @@
 # Flatr-App-Core
 
-Configure:
+## Configure:
 
 ```
 cat > flatrapp.cfg << EOF
@@ -10,10 +10,21 @@ jwtSecret = "secret"
 EOF
 ```
 
-Build:
+## Prerequisites
+`$ nix-env -i cabal-install`
 
-`$ stack build --fast --pedantic`
+## Build
+Launch the nix shell
 
-Run:
+`$ cabal build`
 
-`$ stack exec Flatr-App-Core-exe`
+## Run
+Launch the nix shell
+`$ cabal run`
+
+
+## Launching the nix shell
+Either launch it yourself with `$ nix-shell`
+
+or install [direnv](https://direnv.net)
+and allow it do be active in the directory `direnv allow`.
