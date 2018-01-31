@@ -53,6 +53,6 @@ routeTasks = do
           Nothing -> error "I fucked up #1"
           Just theTask -> do
             setStatus created201
-            let foo :: T.Text = T.pack $ printf "/tasks/%d" (Util.integerKey taskId :: Integer)
-            setHeader "Location" foo
+            let location :: T.Text = T.pack $ printf "/tasks/%d" (Util.integerKey taskId :: Integer)
+            setHeader "Location" location
             json theTask

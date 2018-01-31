@@ -84,21 +84,26 @@ errorHandler status
 authHook :: ApiAction (HVect xs) (HVect (Text ': xs))
 authHook = do
     oldCtx <- getContext
-    maybeBearerToken <- header "Authorization"
-    case maybeBearerToken of
+    maybeAuthHeader <- header "Authorization"
+    case maybeAuthHeader of
       Nothing -> do
         setStatus unauthorized401
         Util.errorJson Util.Unauthorized
-      Just bearerToken -> do
-        let maybeClaims = JWT.claims <$>
-                      JWT.decodeAndVerifySignature (JWT.secret jwtSecret) bearerToken
-        let maybeTokenId = JWT.jti =<< maybeClaims
-        let maybeSubject = JWT.sub =<< maybeClaims
-        case maybeTokenId `Util.maybeTuple` maybeSubject of
-          Nothing -> text "Token invalid"
-          Just (tokenId, subject) -> do
-            let tokenIdText = pack . show $ tokenId -- make typesafe with signature
-            maybeT <- Util.runSQL $ P.selectFirst [TokenTokenId ==. tokenIdText] []
-            case maybeT of
-              Nothing -> text "You're not logged in"
-              Just t  -> return $ (pack . show $ subject) :&: oldCtx
+      Just authHeader ->
+        case T.stripPrefix "Bearer " authHeader of
+          Nothing -> do
+            setStatus unauthorized401
+            Util.errorJson Util.Unauthorized
+          Just bearerToken -> do
+            let maybeClaims = JWT.claims <$>
+                          JWT.decodeAndVerifySignature (JWT.secret jwtSecret) bearerToken
+            let maybeTokenId = JWT.jti =<< maybeClaims
+            let maybeSubject = JWT.sub =<< maybeClaims
+            case maybeTokenId `Util.maybeTuple` maybeSubject of
+              Nothing -> Util.errorJson Util.TokenInvalid
+              Just (tokenId, subject) -> do
+                let tokenIdText = pack . show $ tokenId -- make typesafe with signature
+                maybeT <- Util.runSQL $ P.selectFirst [TokenTokenId ==. tokenIdText] []
+                case maybeT of
+                  Nothing -> Util.errorJson Util.NotLoggedIn
+                  Just t  -> return $ (pack . show $ subject) :&: oldCtx

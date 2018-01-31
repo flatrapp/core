@@ -55,7 +55,10 @@ data JsonError
   | Unauthorized
   | NoUserWithId
   | NoUserWithEmail
-  | BadRequest deriving (Show)
+  | BadRequest
+  | TokenInvalid
+  | NotLoggedIn
+  deriving (Show)
 
 conv x = (T.pack *** T.pack) (conv' x)
   where
@@ -65,6 +68,8 @@ conv x = (T.pack *** T.pack) (conv' x)
   conv' NoUserWithId      = ("no_user_with_id", "No user exists with this ID.")
   conv' NoUserWithEmail   = ("no_user_with_email", "No user exists with this Email address")
   conv' BadRequest        = ("bad_request", "Bad request. Not understood.")
+  conv' TokenInvalid      = ("token_invalid", "The token is invalid, you should authorize yourself again.")
+  conv' NotLoggedIn       = ("not_logged_in", "You are not logged in.")
 
 errorJson :: JsonError -> ApiAction ctx a
 errorJson err =
