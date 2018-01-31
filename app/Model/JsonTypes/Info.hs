@@ -10,6 +10,7 @@ import           GHC.Generics
 data Info =
      Info { version     :: Text
           , currentTime :: UTCTime
+          , name        :: Text
           } deriving (Show, Generic)
 
 instance ToJSON Info

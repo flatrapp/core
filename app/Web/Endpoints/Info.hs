@@ -12,9 +12,13 @@ import           Web.Spock
 apiVersion :: Text
 apiVersion = pack "v0.1"
 
+serverName :: Text
+serverName = pack "core"
+
 routeInfo =
   get "info" $ do
     currentTime <- liftIO getCurrentTime
     json Info { version     = apiVersion
               , currentTime = currentTime
+              , name  = serverName
               }
