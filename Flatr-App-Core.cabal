@@ -1,23 +1,15 @@
 name:                Flatr-App-Core
 version:             0.1.0.0
--- synopsis:
--- description:
 homepage:            https://github.com/flatrapp/core
 license:             Apache
 license-file:        LICENSE
 author:              Daniel Schäfer, Leon Schürmann
 maintainer:          flatrapp@danielschaefer.me
-copyright:           2017 Daniel Schäfer and Leon Schürmann
+copyright:           2018 Daniel Schäfer and Leon Schürmann
 category:            Web
 build-type:          Simple
 extra-source-files:  README.md
 cabal-version:       >=1.10
-
-library
-  hs-source-dirs:      src
-  exposed-modules:     Lib
-  build-depends:       base >= 4.7 && < 5
-  default-language:    Haskell2010
 
 executable Flatr-App-Core-exe
   hs-source-dirs:      app
@@ -45,15 +37,6 @@ executable Flatr-App-Core-exe
                      , bytestring
                      , base16-bytestring >=0.1
                      , cryptohash >=0.11
-  default-language:    Haskell2010
-
-test-suite Flatr-App-Core-test
-  type:                exitcode-stdio-1.0
-  hs-source-dirs:      test
-  main-is:             Spec.hs
-  build-depends:       base
-                     , FlatrApp-Core
-  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   default-language:    Haskell2010
 
 source-repository head
