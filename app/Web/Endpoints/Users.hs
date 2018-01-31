@@ -37,7 +37,6 @@ import qualified Model.CoreTypes              as SqlT
 import qualified Model.JsonTypes.Registration as JsonRegistration
 import qualified Model.JsonTypes.User         as JsonUser
 import qualified Util
-import qualified Web.JWT                          as JWT
 
 routeUsers = do
   get "users" $ do

@@ -27,44 +27,28 @@ import qualified Util
 
 routeTasks = do
   get "tasks" $ do
-    -- post new Turn
-    currentTime <- liftIO getCurrentTime
-    allUsers <- runSQL $ selectKeysList [] [Asc SqlT.UserId]
-    turnId <- runSQL $ insert (SqlT.Turn (Prelude.head allUsers) currentTime)
-
-    taskId <- runSQL $ insert SqlT.Task {
-                                          SqlT.taskTitle = "title"
-                                        , SqlT.taskFrequency = 1
-                                        , SqlT.taskCompletionTime = 1
-                                        , SqlT.taskNextTurn = turnId
-                                        }
-
     allTasks <- runSQL $ selectList [] [Asc SqlT.TaskId]
     json $ map JsonTask.jsonTask allTasks
   post "tasks" $ do
-    --maybeTask <- jsonBody :: SqlT.ApiAction ctx (Maybe JsonTask.Task)
-    maybeTask <- jsonBody :: SqlT.ApiAction ctx (Maybe JsonTurn.Turn)
+    maybeTask <- jsonBody :: SqlT.ApiAction ctx (Maybe JsonTask.Task)
     case maybeTask of
       Nothing -> do
         setStatus badRequest400
         errorJson Util.BadRequest
       Just task -> do
         setStatus created201
+        -- post new Turn
         currentTime <- liftIO getCurrentTime
-        --allUsers <- runSQL $ selectKeys [] [Asc SqlT.UserId]
-        let allUsers = ["foo"]
-        --newId <- createTask task currentTime
-        --json $ object ["result" .= String "success", "id" .= newId]
-        text . T.pack . show $ allUsers
-
---createTask turn time = runSQL $ insert turn
---      where turn = SqlT.Turn (1::Int) time
---createTask task = runSQL $ insert task
---    where task = SqlT.Task
---                    { SqlT.title          = JsonRegistration.title task
---                    , SqlT.frequency      = JsonRegistration.frequency task
---                    , SqlT.completionTime = JsonRegistration.completionTime task
---                    , SqlT.users          = JsonRegistration.users task
---                    , SqlT.nextTurn       = firstTurn
---                    }
---          firstTurn = ;
+        allUsers <- runSQL $ selectKeysList [] [Asc SqlT.UserId]
+        turnId <- runSQL $ insert (SqlT.Turn (Prelude.head allUsers) currentTime)
+        -- post actual Task
+        taskId <- runSQL $ insert SqlT.Task {
+                                              SqlT.taskTitle = JsonTask.title task
+                                            , SqlT.taskFrequency = JsonTask.frequency task
+                                            , SqlT.taskCompletionTime = JsonTask.completionTime task
+                                            , SqlT.taskNextTurn = turnId
+                                            }
+        maybeTask <- runSQL $ selectFirst [SqlT.TaskId ==. taskId] []
+        case JsonTask.jsonTask <$> maybeTask of
+          Nothing -> error "I fucked up #1"
+          Just theTask -> json theTask
