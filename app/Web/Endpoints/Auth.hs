@@ -40,19 +40,22 @@ routeAuth =
                          , JWT.jti = JWT.stringOrURI tokenId
                          , JWT.sub = JWT.stringOrURI $ email loginCredentials
                          }
-        maybeUser<- Util.runSQL $ P.selectFirst [UserEmail ==. email loginCredentials] []
-        -- TODO check password and throw invalid credentials instead of
-        -- this user does not exist
+        maybeUser <- Util.runSQL $ P.selectFirst [UserEmail ==. email loginCredentials] []
         case maybeUser of
           Nothing -> do
             setStatus forbidden403
             Util.errorJson Util.UserPasswordWrong
-          Just (Entity userId _) -> do
-            newId <- Util.runSQL $ insert $ Token userId tokenId $ posixSecondsToUTCTime validUntil
-            json $ object [ "token"    .= JWT.encodeSigned JWT.HS256 key cs
-                          , "tokenId"  .= tokenId
-                          , "validFor" .= validFor
-                          ]
+          Just (Entity userId user) -> do
+            let hashedPw = Util.hashPassword (password loginCredentials) (Util.decodeHex . userSalt $ user)
+            if hashedPw == userPassword user then do
+              setStatus forbidden403
+              Util.errorJson Util.UserPasswordWrong
+            else do
+              _newId <- Util.runSQL $ insert $ Token userId tokenId $ posixSecondsToUTCTime validUntil
+              json $ object [ "token"    .= JWT.encodeSigned JWT.HS256 key cs
+                            , "tokenId"  .= tokenId
+                            , "validFor" .= validFor
+                            ]
 
 tokenTimeout :: Data.Time.Clock.POSIX.POSIXTime
 tokenTimeout = 60 * 60

@@ -58,18 +58,20 @@ data JsonError
   | BadRequest
   | TokenInvalid
   | NotLoggedIn
+  | NotFound
   deriving (Show)
 
 conv x = (T.pack *** T.pack) (conv' x)
   where
   conv' InvalidRequest    = ("invalid_request", "Invalid request.")
-  conv' UserPasswordWrong = ("user_password_wrong", "User does not exist or password is wrong")
+  conv' UserPasswordWrong = ("user_password_wrong", "User does not exist or password is wrong.")
   conv' Unauthorized      = ("aunauthorized", "Unauthorized.")
   conv' UserNotFound      = ("user_not_found", "No user exists with this ID.")
   conv' TaskNotFound      = ("task_not_found", "No task exists with this ID.")
   conv' BadRequest        = ("bad_request", "Bad request. Not understood.")
   conv' TokenInvalid      = ("token_invalid", "The token is invalid, you should authorize yourself again.")
   conv' NotLoggedIn       = ("not_logged_in", "You are not logged in.")
+  conv' NotFound          = ("not_found", "There's nothing here.")
 
 errorJson :: JsonError -> ApiAction ctx a
 errorJson err =

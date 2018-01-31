@@ -27,6 +27,8 @@ User json
   firstName Text
   lastName  Text
 
+  UniqueEmail email
+
   deriving Show
 
 Token
