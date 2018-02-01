@@ -58,7 +58,7 @@ routeAuth =
                             ]
 
 tokenTimeout :: Data.Time.Clock.POSIX.POSIXTime
-tokenTimeout = 60 * 60
+tokenTimeout = 60 -- * 60
 
 tokenGracePeriod :: Data.Time.Clock.POSIX.POSIXTime
 tokenGracePeriod = 60

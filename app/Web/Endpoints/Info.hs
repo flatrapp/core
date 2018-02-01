@@ -16,8 +16,8 @@ serverName = pack "core"
 
 routeInfo =
   get "info" $ do
-    currentTime <- liftIO getCurrentTime
+    currentTime' <- liftIO getCurrentTime
     json Info { version     = apiVersion
-              , currentTime = currentTime
+              , currentTime = currentTime'
               , name  = serverName
               }

@@ -8,21 +8,16 @@
 module Web.Endpoints.Tasks where
 
 import           Control.Monad.IO.Class
-import           Data.Aeson                   hiding (json)
 import qualified Data.Text                    as T
 import           Data.Time.Clock
 import           Database.Persist             hiding (delete, get)
 import qualified Database.Persist             as P
 import Text.Printf
 import           Network.HTTP.Types.Status
-import           System.Random
 import           Web.Spock
 
 import qualified Model.CoreTypes              as SqlT
-import qualified Model.JsonTypes.Registration as JsonRegistration
 import qualified Model.JsonTypes.Task         as JsonTask
-import qualified Model.JsonTypes.Turn         as JsonTurn
-import qualified Model.JsonTypes.User         as JsonUser
 import           Util                         (errorJson, runSQL)
 import qualified Util
 

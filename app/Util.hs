@@ -16,7 +16,6 @@ import qualified Data.Text               as T
 import qualified Data.Text.Encoding      as E
 import qualified Data.Word8
 import           Database.Persist.Sqlite
-import           Model.CoreTypes
 import           Prelude                 hiding (length)
 import           System.Random
 import           Web.Spock
@@ -60,16 +59,6 @@ data JsonError
   | NotFound
   deriving (Show)
 
-conv x = (T.pack *** T.pack) (conv' x)
-  where
-  conv' InvalidRequest    = ("invalid_request", "Invalid request.")
-  conv' UserPasswordWrong = ("user_password_wrong", "User does not exist or password is wrong.")
-  conv' Unauthorized      = ("aunauthorized", "Unauthorized.")
-  conv' UserNotFound      = ("user_not_found", "No user exists with this ID.")
-  conv' TaskNotFound      = ("task_not_found", "No task exists with this ID.")
-  conv' BadRequest        = ("bad_request", "Bad request. Not understood.")
-  conv' TokenInvalid      = ("token_invalid", "The token is invalid, you should authorize yourself again.")
-  conv' NotFound          = ("not_found", "There's nothing here.")
 
 errorJson err =
   json $
@@ -79,7 +68,21 @@ errorJson err =
         "message" .= snd (conv err)
       ]
     ]
+  where
+    conv :: JsonError -> (T.Text, T.Text)
+    conv x = (T.pack *** T.pack) (conv' x)
 
+    conv' :: JsonError -> (String, String)
+    conv' InvalidRequest    = ("invalid_request", "Invalid request.")
+    conv' UserPasswordWrong = ("user_password_wrong", "User does not exist or password is wrong.")
+    conv' Unauthorized      = ("aunauthorized", "Unauthorized.")
+    conv' UserNotFound      = ("user_not_found", "No user exists with this ID.")
+    conv' TaskNotFound      = ("task_not_found", "No task exists with this ID.")
+    conv' BadRequest        = ("bad_request", "Bad request. Not understood.")
+    conv' TokenInvalid      = ("token_invalid", "The token is invalid, you should authorize yourself again.")
+    conv' NotFound          = ("not_found", "There's nothing here.")
+
+maybeToEither :: a -> Maybe b -> Either a b
 maybeToEither = flip maybe Right . Left
 
 maybeTuple :: Maybe a -> Maybe b -> Maybe (a, b)

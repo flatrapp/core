@@ -28,7 +28,6 @@ import           Web.Endpoints.Tasks
 import           Web.Endpoints.Users
 import           Web.Spock
 import qualified Model.CoreTypes              as SqlT
-import qualified Model.JsonTypes.Registration as JsonRegistration
 import qualified Model.JsonTypes.User         as JsonUser
 
 textStringShow :: (Show a) => a -> ActionCtxT ctx (WebStateM SqlBackend () ()) a
@@ -53,11 +52,11 @@ app =
           Just theUser -> json theUser
       get "secret" $ do
         (subject :: Text) <- fmap findFirst getContext
-        --textStringShow subject
+        _ <- textStringShow subject
         text "Welome!"
     get "test" $ do
       currentTime <- liftIO getPOSIXTime
-      text $ pack $ show currentTime <> (show $ currentTime + tokenTimeout + tokenGracePeriod)
+      text $ pack $ show currentTime <> show (currentTime + tokenTimeout + tokenGracePeriod)
     -- Allow for pre-flight AJAX requests
     hookAny OPTIONS $ \_ ->
       setHeader "Access-Control-Allow-Headers" "Content-Type, Authorization"
@@ -71,6 +70,7 @@ corsHeader =
 initHook :: ApiAction () (HVect '[])
 initHook = return HNil
 
+errorHandler :: MonadIO m => Status -> ActionCtxT ctx m b
 errorHandler status
   | status == notFound404 = do
     setStatus notFound404
