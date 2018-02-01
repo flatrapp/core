@@ -8,27 +8,27 @@
 module Web.App where
 
 import           Control.Monad.IO.Class
-import           Data.HVect                       hiding (pack)
-import           Data.Monoid                      ((<>))
-import           Data.Text                        (Text, pack)
-import qualified Data.Text                        as T
-import qualified Data.Text.Encoding               as T
-import qualified Database.Persist                 as P
-import           Database.Persist.Sql             hiding (delete, get)
-import           Database.Persist.Sqlite          (SqlBackend)
-import           Data.Time.Clock.POSIX            (getPOSIXTime)
-import           Data.Time.Clock                  (getCurrentTime)
+import           Data.HVect                hiding (pack)
+import           Data.Monoid               ((<>))
+import           Data.Text                 (Text, pack)
+import qualified Data.Text                 as T
+import qualified Data.Text.Encoding        as T
+import           Data.Time.Clock           (getCurrentTime)
+import           Data.Time.Clock.POSIX     (getPOSIXTime)
+import qualified Database.Persist          as P
+import           Database.Persist.Sql      hiding (delete, get)
+import           Database.Persist.Sqlite   (SqlBackend)
 import           Model.CoreTypes
-import qualified Web.JWT                          as JWT
+import qualified Model.CoreTypes           as SqlT
+import qualified Model.JsonTypes.User      as JsonUser
 import           Network.HTTP.Types.Status
 import qualified Util
 import           Web.Endpoints.Auth
 import           Web.Endpoints.Info
 import           Web.Endpoints.Tasks
 import           Web.Endpoints.Users
+import qualified Web.JWT                   as JWT
 import           Web.Spock
-import qualified Model.CoreTypes              as SqlT
-import qualified Model.JsonTypes.User         as JsonUser
 
 textStringShow :: (Show a) => a -> ActionCtxT ctx (WebStateM SqlBackend () ()) a
 textStringShow = text . pack . show

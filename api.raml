@@ -27,6 +27,7 @@ types:
       firstName: string
       lastName: string
       password: string
+      code?: string
   LoginCredentials:
     type: object
     properties:
@@ -73,6 +74,13 @@ types:
       version:
         type: string
         example: "v0.1"
+  Invitation:
+    type: object
+    properties:
+      id?: int
+      email: string
+      code?: string
+
 
 /info:
   get:
@@ -82,6 +90,53 @@ types:
         body:
           type: Info
 
+/invitations:
+  get:
+    description: Get all invitations the current User has sent
+    responses:
+      type: Invitation[]
+      example: |
+        [{
+          "id": 1,
+          "email": "flatmate@example.com"
+        },{
+          "id": 3,
+          "email": "landlord@example.com",
+          "code": $code
+        }]
+  post:
+    description: |
+      Invite a person via email address. An email with invite code is sent to them
+    body:
+      type: Invitation
+      example: |
+        {
+          "email": "flatmate@example.com"
+        }
+    responses:
+      201:
+        headers:
+          Location:
+            description: URL of the newly created Invitation
+        body:
+          type: Invitation
+      400:
+        body:
+          type: Error
+          example: |
+            {
+              "error": {
+                "code": "bad_request",
+                "message": "Bad request"
+              }
+            }
+      400:
+  /{invitationId}:
+    delete:
+      description: Delete/Invalidate this invitation
+      responses:
+        204:
+          description: Invitation was successfully deleted
 
 /tasks:
   get:
@@ -261,9 +316,9 @@ types:
           type: TokenResponse
           example: |
             {
-              "token": "lkjaf;kajsfaksfj;adskfj",
-              "tokenId": "kaj;fkajsdfj;",
-              "validFor": 3660
+              "token": "$token",
+              "tokenId": "$tokenId",
+              "validFor": 3600
             }
       400:
         body:
@@ -278,13 +333,21 @@ types:
       403:
         body:
           type: Error
-          example: |
-            {
-              "error": {
-                "code": "user_password_wrong",
-                "message": "User does not exist or password is wrong"
+          examples:
+            user_not_verified: |
+              {
+                "error": {
+                  "code": "user_not_verified",
+                  "message": "You have not verified your email address yet."
+                }
               }
-            }
+            user_password_wrong: |
+              {
+                "error": {
+                  "code": "user_password_wrong",
+                  "message": "User does not exist or password is wrong"
+                }
+              }
 /secret:
   get:
     is: [ restricted ]

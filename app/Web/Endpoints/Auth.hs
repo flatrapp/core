@@ -50,6 +50,9 @@ routeAuth =
             if hashedPw /= userPassword user then do
               setStatus forbidden403
               Util.errorJson Util.UserPasswordWrong
+            else if userVerified user then do
+              setStatus forbidden403
+              Util.errorJson Util.UserNotVerified
             else do
               _newId <- Util.runSQL $ insert $ Token userId tokenId $ posixSecondsToUTCTime validUntil
               json $ object [ "token"    .= JWT.encodeSigned JWT.HS256 key cs

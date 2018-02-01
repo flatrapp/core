@@ -26,6 +26,7 @@ User json
   salt      Text
   firstName Text
   lastName  Text
+  verified  Bool
 
   UniqueEmail email
 
@@ -50,4 +51,8 @@ Task json
   frequency      Int
   completionTime Int
   nextTurn       TurnId
+
+Invitation json
+  email Text
+  code Text Maybe
 |]

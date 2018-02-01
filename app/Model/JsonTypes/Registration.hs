@@ -7,10 +7,11 @@ import           Data.Text    (Text)
 import           GHC.Generics
 
 data Registration =
-    Registration { email     :: Text
+    Registration { email     :: Maybe Text
                  , firstName :: Text
                  , lastName  :: Text
                  , password  :: Text
+                 , code      :: Maybe Text
                  } deriving (Show, Generic)
 
 instance FromJSON Registration

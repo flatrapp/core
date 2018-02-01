@@ -57,6 +57,8 @@ data JsonError
   | BadRequest
   | TokenInvalid
   | NotFound
+  | UserNotVerified
+  | InvalidInvitationCode
   deriving (Show)
 
 
@@ -73,14 +75,16 @@ errorJson err =
     conv x = (T.pack *** T.pack) (conv' x)
 
     conv' :: JsonError -> (String, String)
-    conv' InvalidRequest    = ("invalid_request", "Invalid request.")
-    conv' UserPasswordWrong = ("user_password_wrong", "User does not exist or password is wrong.")
-    conv' Unauthorized      = ("aunauthorized", "Unauthorized.")
-    conv' UserNotFound      = ("user_not_found", "No user exists with this ID.")
-    conv' TaskNotFound      = ("task_not_found", "No task exists with this ID.")
-    conv' BadRequest        = ("bad_request", "Bad request. Not understood.")
-    conv' TokenInvalid      = ("token_invalid", "The token is invalid, you should authorize yourself again.")
-    conv' NotFound          = ("not_found", "There's nothing here.")
+    conv' InvalidRequest        = ("invalid_request", "Invalid request.")
+    conv' UserPasswordWrong     = ("user_password_wrong", "User does not exist or password is wrong.")
+    conv' Unauthorized          = ("aunauthorized", "Unauthorized.")
+    conv' UserNotFound          = ("user_not_found", "No user exists with this ID.")
+    conv' TaskNotFound          = ("task_not_found", "No task exists with this ID.")
+    conv' BadRequest            = ("bad_request", "Bad request. Not understood.")
+    conv' TokenInvalid          = ("token_invalid", "The token is invalid, you should authorize yourself again.")
+    conv' NotFound              = ("not_found", "There's nothing here.")
+    conv' UserNotVerified       = ("user_not_verified", "You have not verified your email address yet.")
+    conv' InvalidInvitationCode = ("invalid_invitation_code", "This is not a valid invitation code.")
 
 maybeToEither :: a -> Maybe b -> Either a b
 maybeToEither = flip maybe Right . Left

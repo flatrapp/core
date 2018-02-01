@@ -8,17 +8,17 @@
 module Web.Endpoints.Tasks where
 
 import           Control.Monad.IO.Class
-import qualified Data.Text                    as T
+import qualified Data.Text                 as T
 import           Data.Time.Clock
-import           Database.Persist             hiding (delete, get)
-import qualified Database.Persist             as P
-import Text.Printf
+import           Database.Persist          hiding (delete, get)
+import qualified Database.Persist          as P
 import           Network.HTTP.Types.Status
+import           Text.Printf
 import           Web.Spock
 
-import qualified Model.CoreTypes              as SqlT
-import qualified Model.JsonTypes.Task         as JsonTask
-import           Util                         (errorJson, runSQL)
+import qualified Model.CoreTypes           as SqlT
+import qualified Model.JsonTypes.Task      as JsonTask
+import           Util                      (errorJson, runSQL)
 import qualified Util
 
 routeTasks = do
