@@ -17,6 +17,7 @@ import qualified Database.Persist                 as P
 import           Database.Persist.Sql             hiding (delete, get)
 import           Database.Persist.Sqlite          (SqlBackend)
 import           Data.Time.Clock.POSIX            (getPOSIXTime)
+import           Data.Time.Clock                  (getCurrentTime)
 import           Model.CoreTypes
 import qualified Web.JWT                          as JWT
 import           Network.HTTP.Types.Status
@@ -70,11 +71,10 @@ corsHeader =
 initHook :: ApiAction () (HVect '[])
 initHook = return HNil
 
-errorHandler :: Status -> ActionCtxT () IO ()
 errorHandler status
   | status == notFound404 = do
     setStatus notFound404
-    text "Sorry, nothing found :/"
+    Util.errorJson Util.NotFound
   | otherwise             = do
     setStatus status
     text $ (T.pack . show $ statusCode status)
@@ -105,5 +105,15 @@ authHook = do
                 let tokenIdText = pack . show $ tokenId -- make typesafe with signature
                 maybeT <- Util.runSQL $ P.selectFirst [TokenTokenId ==. tokenIdText] []
                 case maybeT of
-                  Nothing -> Util.errorJson Util.NotLoggedIn
-                  Just t  -> return $ (pack . show $ subject) :&: oldCtx
+                  Nothing -> do
+                    setStatus unauthorized401
+                    Util.errorJson Util.Unauthorized
+                  Just (Entity _tokenId token) -> do
+                    currentTime <- liftIO getCurrentTime
+                    let tokenTimeout = tokenValidUntil token
+                    if tokenTimeout < currentTime then do
+                      let _ = token :: Token
+                      setStatus unauthorized401
+                      Util.errorJson Util.Unauthorized
+                    else
+                      return $ (pack . show $ subject) :&: oldCtx

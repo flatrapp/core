@@ -3,7 +3,6 @@
 module Web.Endpoints.Info where
 
 import           Control.Monad.IO.Class
-import           Data.Aeson             hiding (json)
 import           Data.Text              (Text, pack)
 import           Data.Time.Clock        (getCurrentTime)
 import           Model.JsonTypes.Info

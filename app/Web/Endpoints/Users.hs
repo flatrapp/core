@@ -70,6 +70,7 @@ routeUsers = do
         newId <- registerUser registration gen
         json $ object ["result" .= String "success", "id" .= newId]
 
+-- TODO check that user is not there
 registerUser registration gen = runSQL $ insert user
     where user = SqlT.User
                     { SqlT.userEmail     = JsonRegistration.email registration

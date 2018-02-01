@@ -57,7 +57,6 @@ data JsonError
   | TaskNotFound
   | BadRequest
   | TokenInvalid
-  | NotLoggedIn
   | NotFound
   deriving (Show)
 
@@ -70,10 +69,8 @@ conv x = (T.pack *** T.pack) (conv' x)
   conv' TaskNotFound      = ("task_not_found", "No task exists with this ID.")
   conv' BadRequest        = ("bad_request", "Bad request. Not understood.")
   conv' TokenInvalid      = ("token_invalid", "The token is invalid, you should authorize yourself again.")
-  conv' NotLoggedIn       = ("not_logged_in", "You are not logged in.")
   conv' NotFound          = ("not_found", "There's nothing here.")
 
-errorJson :: JsonError -> ApiAction ctx a
 errorJson err =
   json $
     object

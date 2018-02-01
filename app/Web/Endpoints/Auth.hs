@@ -36,7 +36,7 @@ routeAuth =
         gen <- liftIO getStdGen
         let tokenId =  Util.randomText 64 gen
         let key = JWT.secret jwtSecret
-        let cs = JWT.def { JWT.exp = JWT.numericDate validUntil
+        let cs = JWT.def { JWT.exp = JWT.numericDate $ validUntil - tokenGracePeriod
                          , JWT.jti = JWT.stringOrURI tokenId
                          , JWT.sub = JWT.stringOrURI $ email loginCredentials
                          }
