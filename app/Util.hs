@@ -7,6 +7,7 @@
 module Util where
 
 import           Control.Arrow
+import           Control.Monad.IO.Class
 import           Control.Monad.Logger    (LoggingT, runStdoutLoggingT)
 import qualified Crypto.Hash.SHA512      as SHA
 import           Data.Aeson              hiding (json)
@@ -62,6 +63,8 @@ data JsonError
   deriving (Show)
 
 
+errorJson :: Control.Monad.IO.Class.MonadIO m =>
+             JsonError -> ActionCtxT ctx m b
 errorJson err =
   json $
     object

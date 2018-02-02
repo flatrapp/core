@@ -30,6 +30,7 @@ routeInvitations = do
         setStatus notFound404
         errorJson Util.NotFound
       Just _theInvitation -> do
+        setStatus noContent204
         runSQL $ P.delete invitationId  -- TODO check return value
         text ""  -- TODO check if I can send empty response
   post "invitations" $ do

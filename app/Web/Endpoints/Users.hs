@@ -45,7 +45,9 @@ routeUsers = do
         errorJson Util.UserNotFound
       Just _theUser -> do
         runSQL $ P.delete userId
-        text "Thanks for deleting the user"
+        setStatus noContent204
+        text ""  -- TODO check if empty body is possible
+  -- TOOD implement put "users" $ do
   post "users" $ do
     maybeRegistration <- jsonBody :: SqlT.ApiAction ctx (Maybe JsonRegistration.Registration)
     case maybeRegistration of
@@ -89,7 +91,7 @@ routeUsers = do
                       Util.errorJson Util.BadRequest
               Nothing -> do
                 -- User should provide at least code or email
-                Util.errorJson Util.BadRequest
+                Util.errorJson Util.BadRequest  -- TODO check what it returns
                 setStatus badRequest400
 
 -- TODO check that user is not there

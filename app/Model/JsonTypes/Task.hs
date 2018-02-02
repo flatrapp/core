@@ -11,7 +11,7 @@ import           Prelude              hiding (id)
 import qualified Util
 
 data Task =
-    Task { id             :: Integer
+    Task { id             :: Maybe Integer
          , title          :: Text
          , frequency      :: Int
          , completionTime :: Int
@@ -25,7 +25,7 @@ instance FromJSON Task
 
 jsonTask :: Entity SqlT.Task -> Task
 jsonTask (Entity taskId task) =
-    Task { id        = Util.integerKey taskId
+    Task { id        = Just $ Util.integerKey taskId
          , title     = SqlT.taskTitle task
          , frequency = SqlT.taskFrequency task
          , completionTime = SqlT.taskCompletionTime task

@@ -52,6 +52,7 @@ types:
     properties:
       userId: integer
       date: datetime-only
+      taskId: integer
   Task:
     type: object
     properties:
@@ -69,8 +70,6 @@ types:
         type: integer[]
         description: |
           All users that will have to complete this task at one point or another
-      nextTurn?:
-        type: Turn
   Info:
     type: object
     properties:
@@ -156,11 +155,7 @@ types:
                 "completionTime": 5,
                 "users": [
                   1
-                ],
-                "nextTurn": {
-                  "userId": 1,
-                  "date": "2015-07-04T21:00:00"
-                }
+                ]
               }]
   post:
     description: |
@@ -191,11 +186,7 @@ types:
               "completionTime": 5,
               "users": [
                 1
-              ],
-              "nextTurn": {
-                "userId": 1,
-                "date": "2015-07-04T21:00:00"
-              }
+              ]
             }
       400:
         body:
@@ -224,10 +215,10 @@ types:
                 "users": [
                   1
                 ],
-                "nextTurn": {
+                "turns": [{
                   "userId": 1,
                   "date": "2015-07-04T21:00:00"
-                }
+                }]
               }
         404:
           body:
@@ -415,11 +406,8 @@ types:
       description: |
         Delete the user with this id
         responses:
-          200:
-            body:
-              text/plain:
-                example: |
-                  Thanks for deleting the user
+          204:
+            description: User was successfully deleted
   /current:
     get:
       description: |

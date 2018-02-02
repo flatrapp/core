@@ -44,13 +44,13 @@ TaskUser
 
 Turn json
   userId UserId
+  taskId TaskId
   date   UTCTime
 
 Task json
   title          Text
   frequency      Int
   completionTime Int
-  nextTurn       TurnId
 
 Invitation json
   email Text

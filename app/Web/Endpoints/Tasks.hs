@@ -12,6 +12,7 @@ import qualified Data.Text                 as T
 import           Data.Time.Clock
 import           Database.Persist          hiding (delete, get)
 import qualified Database.Persist          as P
+import qualified Database.Persist.Sql      as PSql
 import           Network.HTTP.Types.Status
 import           Text.Printf
 import           Web.Spock
@@ -31,7 +32,7 @@ routeTasks = do
       Nothing -> do
         setStatus notFound404
         errorJson Util.TaskNotFound
-      Just theTask -> json theTask
+      Just theTask -> json theTask  -- TODO return turns
   delete ("tasks" <//> var) $ \(taskId :: SqlT.TaskId) -> do
     maybeTask <- runSQL $ P.get taskId :: SqlT.ApiAction ctx (Maybe SqlT.Task)
     case maybeTask of
@@ -40,7 +41,9 @@ routeTasks = do
         errorJson Util.TaskNotFound
       Just _theTask -> do
         runSQL $ P.delete taskId
-        text "Thanks for deleting the task"
+        setStatus noContent204
+        text ""  -- TODO check if empty response is possible
+  -- TODO implement put "tasks" $ do
   post "tasks" $ do
     maybeTask <- jsonBody :: SqlT.ApiAction ctx (Maybe JsonTask.Task)
     case maybeTask of
@@ -48,17 +51,26 @@ routeTasks = do
         setStatus badRequest400
         errorJson Util.BadRequest
       Just task -> do
-        -- post new Turn
-        currentTime <- liftIO getCurrentTime
-        allUsers <- runSQL $ selectKeysList [] [Asc SqlT.UserId]
-        turnId <- runSQL $ insert (SqlT.Turn (Prelude.head allUsers) currentTime)
         -- post actual Task
         taskId <- runSQL $ insert SqlT.Task {
-                                              SqlT.taskTitle = JsonTask.title task
-                                            , SqlT.taskFrequency = JsonTask.frequency task
-                                            , SqlT.taskCompletionTime = JsonTask.completionTime task
-                                            , SqlT.taskNextTurn = turnId
-                                            }
+              SqlT.taskTitle          = JsonTask.title task
+            , SqlT.taskFrequency      = JsonTask.frequency task
+            , SqlT.taskCompletionTime = JsonTask.completionTime task
+            }
+        -- post new TaskUsers  TODO return in response
+        currentTime <- liftIO getCurrentTime
+        let users = JsonTask.users task
+        let insertIt userId = runSQL $ insert SqlT.TaskUser {
+              SqlT.taskUserTaskId = taskId
+            , SqlT.taskUserUserId = PSql.toSqlKey . fromInteger $ userId
+            }
+        _ <- mapM insertIt users -- TODO check return value
+        -- post initial Turn TODO return in response
+        turnId <- runSQL $ insert SqlT.Turn {
+              SqlT.turnUserId = PSql.toSqlKey . fromInteger . Prelude.head $ users
+            , SqlT.turnTaskId = taskId
+            , SqlT.turnDate   = currentTime  -- TODO something real
+            }
         maybeTask <- runSQL $ selectFirst [SqlT.TaskId ==. taskId] []
         case JsonTask.jsonTask <$> maybeTask of
           Nothing -> error "I fucked up #1"
