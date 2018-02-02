@@ -12,6 +12,7 @@ module Web.Endpoints.Users where
 
 import           Control.Monad.IO.Class
 import           Data.Maybe
+import qualified Data.Text                    as T
 import           Database.Persist             hiding (delete, get)
 import qualified Database.Persist             as P
 import qualified Model.CoreTypes              as SqlT
@@ -24,12 +25,11 @@ import qualified Util
 import           Web.Spock
 
 returnUserById userId = do
-    maybeUser <- runSQL $ P.selectFirst [SqlT.UserId ==. userId] []
-    case JsonUser.jsonUser <$> maybeUser of
-      Nothing -> do
-        setStatus notFound404
-        errorJson Util.UserNotFound
-      Just theUser -> json theUser
+  maybeUser <- runSQL $ P.selectFirst [SqlT.UserId ==. userId] []
+  fromMaybe
+    (do setStatus notFound404
+        errorJson Util.UserNotFound)
+    (json . JsonUser.jsonUser <$> maybeUser)
 
 routeUsers = do
   get "users" $ do
@@ -55,33 +55,52 @@ routeUsers = do
       Just registration ->
         case JsonRegistration.code registration of
           Just code -> do
-            maybeInvitation <- runSQL $ P.selectFirst [SqlT.InvitationCode ==. Just code] []
+            maybeInvitation <- runSQL $ P.selectFirst
+              [SqlT.InvitationCode ==. Just code] []
             case maybeInvitation of
               Nothing -> do
                 setStatus notFound404
                 errorJson Util.InvalidInvitationCode
-              Just (Entity _invId theInvitation) -> do
+              Just (Entity invitationId theInvitation) -> do
+                runSQL $ P.updateWhere [SqlT.InvitationId ==. invitationId] []
                 setStatus created201
                 gen <- liftIO getStdGen
-                newId <- registerUser registration gen (Just $ SqlT.invitationEmail theInvitation)
+                newId <- registerUser registration gen (SqlT.invitationEmail theInvitation) True
                 returnUserById newId
           Nothing -> do
-            -- TODO send verification Email
-            -- $frontedUrl/#signup?code=$code&serverUrl=$serverUrl
-            setStatus created201
             gen <- liftIO getStdGen
-            newId <- registerUser registration gen Nothing
-            returnUserById newId
+            case JsonRegistration.email registration of
+              Just email ->
+                if email `elem` [T.pack "ds@test.com"] then do  -- TODO via config
+                  setStatus created201
+                  newId <- registerUser registration gen email True
+                  returnUserById newId
+                else do
+                  maybeInvitation <- runSQL $ P.selectFirst [SqlT.InvitationEmail ==. email] [] 
+                  case maybeInvitation of
+                    Just (Entity _invitationId _invitation) -> do
+                      -- TODO send verification Email if smtp config set
+                      -- $frontedUrl/#signup?code=$code&serverUrl=$serverUrl
+                      newId <- registerUser registration gen email False
+                      returnUserById newId
+                    Nothing -> do
+                      -- User provided only email but is not invited
+                      setStatus badRequest400
+                      Util.errorJson Util.BadRequest
+              Nothing -> do
+                -- User should provide at least code or email
+                Util.errorJson Util.BadRequest
+                setStatus badRequest400
 
 -- TODO check that user is not there
-registerUser registration gen mailOrNot = runSQL $ insert user
+registerUser registration gen mail verified = runSQL $ insert user
     where user = SqlT.User
-                    { SqlT.userEmail     = fromMaybe (fromJust $ JsonRegistration.email registration) mailOrNot
+                    { SqlT.userEmail     = mail
                     , SqlT.userPassword  = hashedSaltedPassword
                     , SqlT.userSalt      = Util.makeHex salt'
                     , SqlT.userFirstName = JsonRegistration.firstName registration
                     , SqlT.userLastName  = JsonRegistration.lastName registration
-                    , SqlT.userVerified  = isJust mailOrNot
+                    , SqlT.userVerified  = verified
                     }
           pw = JsonRegistration.password registration
           salt' = Util.randomBS 512 gen

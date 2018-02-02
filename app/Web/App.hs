@@ -25,6 +25,7 @@ import           Network.HTTP.Types.Status
 import qualified Util
 import           Web.Endpoints.Auth
 import           Web.Endpoints.Info
+import           Web.Endpoints.Invitation
 import           Web.Endpoints.Tasks
 import           Web.Endpoints.Users
 import qualified Web.JWT                   as JWT
@@ -40,6 +41,7 @@ app =
     routeAuth
     routeTasks
     routeInfo
+    routeInvitations
     routeUsers
     prehook authHook $ do
       get ("users" <//> "current") $ do  -- TODO move to Endpoints/Users.hs

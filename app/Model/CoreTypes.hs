@@ -13,10 +13,10 @@ import           Data.Text               (Text)
 import           Data.Time.Clock         (UTCTime)
 import           Database.Persist.Sqlite
 import           Database.Persist.TH
-import           Web.Spock
+import qualified Web.Spock
 
-type Api ctx = SpockCtxM ctx SqlBackend () () ()
-type ApiAction ctx a = SpockActionCtx ctx SqlBackend () () a
+type Api ctx = Web.Spock.SpockCtxM ctx SqlBackend () () ()
+type ApiAction ctx a = Web.Spock.SpockActionCtx ctx SqlBackend () () a
 
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
@@ -54,5 +54,6 @@ Task json
 
 Invitation json
   email Text
-  code Text Maybe
+  code  Text Maybe
+  deriving Show
 |]

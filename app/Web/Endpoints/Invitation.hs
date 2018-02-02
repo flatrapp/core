@@ -7,9 +7,7 @@
 
 module Web.Endpoints.Invitation where
 
-import           Control.Monad.IO.Class
 import qualified Data.Text                  as T
-import           Data.Time.Clock
 import           Database.Persist           hiding (delete, get)
 import qualified Database.Persist           as P
 import           Network.HTTP.Types.Status
@@ -26,29 +24,31 @@ routeInvitations = do
     allInvitations <- runSQL $ selectList [] [Asc SqlT.InvitationId]
     json $ map JsonInvitation.jsonInvitation allInvitations
   delete ("invitations" <//> var) $ \(invitationId :: SqlT.InvitationId) -> do
-    maybeInvitation <- runSQL $ P.get invitationId :: SqlT.ApiAction ctx (Maybe SqlT.Invitation)
-    case maybeInvitation of
+    maybeInvitation' <- runSQL $ P.get invitationId :: SqlT.ApiAction ctx (Maybe SqlT.Invitation)
+    case maybeInvitation' of
       Nothing -> do
         setStatus notFound404
         errorJson Util.NotFound
       Just _theInvitation -> do
-        runSQL $ P.delete invitationId
+        runSQL $ P.delete invitationId  -- TODO check return value
         text ""  -- TODO check if I can send empty response
   post "invitations" $ do
+    -- TODO requires authentication only when there already is an invitation
     maybeInvitation <- jsonBody :: SqlT.ApiAction ctx (Maybe JsonInvitation.Invitation)
     case maybeInvitation of
       Nothing -> do
         setStatus badRequest400
         errorJson Util.BadRequest
       Just invitation -> do
-        inviationId <- runSQL $
-          insert SqlT.Invitation { SqlT.invitationEmail = JsonInvitation.title invitation
-                                 , SqlT.invitationCode = "code"
+        invitationId <- runSQL $
+          insert SqlT.Invitation { SqlT.invitationEmail = JsonInvitation.email invitation
+                                 , SqlT.invitationCode  = Just . T.pack $ "code"
                                  }
         maybeInvitation <- runSQL $ selectFirst [SqlT.InvitationId ==. invitationId] []
-        case JsonInvitation.jsonInvitation <$> maybeInviation of
+        case JsonInvitation.jsonInvitation <$> maybeInvitation of
           Nothing -> error "I fucked up #2"
           Just theInvitation -> do
+            -- TODO send invitation email if smtp config is set
             setStatus created201
             let location :: T.Text = T.pack $ printf "/invitation/%d" (Util.integerKey invitationId :: Integer)
             setHeader "Location" location

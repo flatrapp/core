@@ -59,13 +59,16 @@ types:
       title: string
       frequency:
         type: integer
-        description: Number of days between two executions of this task
+        description: |
+          Number of days between two executions of this task
       completionTime:
         type: integer
-        description: Time to be allowed for the task to be completed in hours
+        description: |
+          Time to be allowed for the task to be completed in hours
       users:
         type: integer[]
-        description: All users that will have to complete this task at one point or another
+        description: |
+          All users that will have to complete this task at one point or another
       nextTurn?:
         type: Turn
   Info:
@@ -80,7 +83,6 @@ types:
       id?: int
       email: string
       code?: string
-
 
 /info:
   get:
