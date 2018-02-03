@@ -55,7 +55,7 @@ routeUsers = do
         setStatus badRequest400
         errorJson Util.BadRequest  -- malformed json
       Just registration ->
-        case JsonRegistration.code registration of
+        case JsonRegistration.invitationCode registration of
           Just code -> do
             maybeInvitation <- runSQL $ P.selectFirst
               [SqlT.InvitationCode ==. Just code] []

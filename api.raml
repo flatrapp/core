@@ -27,7 +27,7 @@ types:
       firstName: string
       lastName: string
       password: string
-      code?: string
+      invitationCode?:
         type: string
         minLength: 16
         maxLength: 16
@@ -84,7 +84,7 @@ types:
     properties:
       id?: int
       email: string
-      code?: string
+      invitationCode?: string
 
 /info:
   get:
@@ -103,11 +103,11 @@ types:
         [{
           "id": 1,
           "email": "flatmate@example.com",
-          "code": $code
+          "invitationCode": "9d0d1e5f8dbe5dc01392"
         },{
           "id": 3,
           "email": "landlord@example.com",
-          "code": $code
+          "invitationCode": "9d0d1e5f8dbe5dc01392"
         }]
   post:
     description: |
@@ -374,6 +374,21 @@ types:
     description: Register a new user
     body:
       type: Registration
+      examples:
+        with_invitation_code: |
+          {
+            "firstName": "Daniel",
+            "lastName": "Schäfer",
+            "password": "pa$$w0rd",
+            "code": "9d0d1e5f8dbe5dc01392",
+          }
+        with_email: |
+          {
+            "firstName": "Daniel",
+            "lastName": "Schäfer",
+            "password": "pa$$w0rd",
+            "email": "foo@example.org",
+          }
     responses:
       200:
         body:
