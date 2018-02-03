@@ -2,3 +2,6 @@
 *.db
 *.cfg
 *.db*
+.direnv*
+dist/
+.nixpkgs/
