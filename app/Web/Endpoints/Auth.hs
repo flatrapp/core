@@ -31,12 +31,11 @@ routeAuth =
         Util.errorJson Util.InvalidRequest
       Just loginCredentials -> do
         currentTime <- liftIO getPOSIXTime
-        let validFor = tokenTimeout + tokenGracePeriod
-        let validUntil = validFor + currentTime
+        let validUntil = currentTime + tokenTimeout + tokenGracePeriod
         gen <- liftIO getStdGen
         let tokenId =  Util.randomText 64 gen
         let key = JWT.secret jwtSecret
-        let cs = JWT.def { JWT.exp = JWT.numericDate $ validUntil - tokenGracePeriod
+        let cs = JWT.def { JWT.exp = JWT.numericDate validUntil
                          , JWT.jti = JWT.stringOrURI tokenId
                          , JWT.sub = JWT.stringOrURI $ email loginCredentials
                          }
@@ -57,11 +56,11 @@ routeAuth =
               _newId <- Util.runSQL $ insert $ Token userId tokenId $ posixSecondsToUTCTime validUntil
               json $ object [ "token"    .= JWT.encodeSigned JWT.HS256 key cs
                             , "tokenId"  .= tokenId
-                            , "validFor" .= validFor
+                            , "validFor" .= tokenTimeout
                             ]
 
 tokenTimeout :: Data.Time.Clock.POSIX.POSIXTime
-tokenTimeout = 60 -- * 60
+tokenTimeout = 60 * 60
 
 tokenGracePeriod :: Data.Time.Clock.POSIX.POSIXTime
 tokenGracePeriod = 60

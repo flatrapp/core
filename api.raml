@@ -20,6 +20,7 @@ types:
       email: string
       firstName: string
       lastName: string
+      email_verified: boolean
   Registration:
     type: object
     properties:
@@ -41,7 +42,10 @@ types:
     properties:
       token: string
       tokenId: string
-      validFor: integer
+      validFor:
+        type: integer
+        description: |
+          Validity duration in seconds (excluding grace period
   Error:
     type: object
     properties:
@@ -79,12 +83,14 @@ types:
       version:
         type: string
         example: "v0.1"
+      name:
+        type: string
+        example: "core"
   Invitation:
     type: object
     properties:
       id?: int
       email: string
-      invitationCode?: string
 
 /info:
   get:
@@ -96,18 +102,16 @@ types:
 
 /invitations:
   get:
-    description: Get all invitations the current User has sent
+    description: Get all pending invitations
     responses:
       type: Invitation[]
       example: |
         [{
           "id": 1,
           "email": "flatmate@example.com",
-          "invitationCode": "9d0d1e5f8dbe5dc01392"
         },{
           "id": 3,
           "email": "landlord@example.com",
-          "invitationCode": "9d0d1e5f8dbe5dc01392"
         }]
   post:
     description: |
@@ -135,8 +139,11 @@ types:
                 "message": "Bad request"
               }
             }
-      400:
   /{invitationId}:
+    patch:
+      description: Resend invitation email
+      body:
+        example: {}
     delete:
       description: Delete/Invalidate this invitation
       responses:
@@ -380,7 +387,7 @@ types:
             "firstName": "Daniel",
             "lastName": "Schäfer",
             "password": "pa$$w0rd",
-            "code": "9d0d1e5f8dbe5dc01392",
+            "invitation_code": "9d0d1e5f8dbe5dc01392",
           }
         with_email: |
           {
@@ -442,6 +449,16 @@ types:
         responses:
           204:
             description: User was successfully deleted
+          404:
+            body:
+              type: Error
+              example: |
+                {
+                  "error": {
+                    "code": "user_not_found",
+                    "message": "Could not find a user with matching id"
+                  }
+                }
   /current:
     get:
       description: |
