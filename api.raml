@@ -99,7 +99,8 @@ types:
       example: |
         [{
           "id": 1,
-          "email": "flatmate@example.com"
+          "email": "flatmate@example.com",
+          "code": $code
         },{
           "id": 3,
           "email": "landlord@example.com",
@@ -334,10 +335,10 @@ types:
                   "message": "You have not verified your email address yet."
                 }
               }
-            user_password_wrong: |
+            credentials_wrong: |
               {
                 "error": {
-                  "code": "user_password_wrong",
+                  "code": "credentials_wrong",
                   "message": "User does not exist or password is wrong"
                 }
               }
@@ -377,13 +378,28 @@ types:
       400:
         body:
           type: Error
-          example: |
-            {
-              "error": {
-                "code": "bad_request",
-                "message": "Bad request"
+          examples:
+            invitation_code_invalid: |
+              {
+                "error": {
+                  "code": "invitation_code_invalid",
+                  "message": "This is not a valid invitation code."
+                }
               }
-            }
+            not_invited: |
+              {
+                "error": {
+                  "code": "not_invited",
+                  "message": "Your email address is not invited."
+                }
+              }
+            bad_request: |
+              {
+                "error": {
+                  "code": "bad_request",
+                  "message": "Bad request"
+                }
+              }
   /{userId}:
     get:
       description: |

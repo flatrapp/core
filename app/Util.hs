@@ -51,7 +51,7 @@ runSQL action = runQuery $ \conn -> runStdoutLoggingT $ runSqlConn action conn
 
 data JsonError
   = InvalidRequest
-  | UserPasswordWrong
+  | CredentialsWrong
   | Unauthorized
   | UserNotFound
   | TaskNotFound
@@ -59,6 +59,7 @@ data JsonError
   | TokenInvalid
   | NotFound
   | EmailNotVerified
+  | InvitationCodeInvalid
   | NotInvited
   deriving (Show)
 
@@ -79,7 +80,7 @@ errorJson err =
 
     conv' :: JsonError -> (String, String)
     conv' InvalidRequest        = ("invalid_request", "Invalid request.")
-    conv' UserPasswordWrong     = ("user_password_wrong", "User does not exist or password is wrong.")
+    conv' CredentialsWrong      = ("user_password_wrong", "User does not exist or password is wrong.")
     conv' Unauthorized          = ("aunauthorized", "Unauthorized.")
     conv' UserNotFound          = ("user_not_found", "No user exists with this ID.")
     conv' TaskNotFound          = ("task_not_found", "No task exists with this ID.")
@@ -87,7 +88,8 @@ errorJson err =
     conv' TokenInvalid          = ("token_invalid", "The token is invalid, you should authorize yourself again.")
     conv' NotFound              = ("not_found", "There's nothing here.")
     conv' EmailNotVerified      = ("email_not_verified", "You have not verified your email address yet.")
-    conv' NotInvited            = ("not_invited", "You are not invited.")
+    conv' InvitationCodeInvalid = ("invitation_code_invalid", "This is not a valid invitation code.")
+    conv' NotInvited            = ("not_invited", "Your email address is not invited.")
 
 maybeToEither :: a -> Maybe b -> Either a b
 maybeToEither = flip maybe Right . Left

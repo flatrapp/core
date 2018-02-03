@@ -62,7 +62,7 @@ routeUsers = do
             case maybeInvitation of
               Nothing -> do
                 setStatus notFound404
-                errorJson Util.NotInvited  -- code not in DB
+                errorJson Util.InvitationCodeInvalid  -- code not in DB
               Just (Entity invitationId theInvitation) -> do
                 runSQL $ P.updateWhere [SqlT.InvitationId ==. invitationId] []
                 setStatus created201
