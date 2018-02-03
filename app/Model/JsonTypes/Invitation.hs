@@ -11,7 +11,7 @@ import           Prelude              hiding (id)
 import           Util
 
 data Invitation =
-     Invitation { id    :: Integer
+     Invitation { id    :: Maybe Integer
                 , email :: Text
                 , code  :: Maybe Text
                 } deriving (Show, Generic)
@@ -21,7 +21,7 @@ instance FromJSON Invitation
 
 jsonInvitation :: Entity SqlT.Invitation -> Invitation
 jsonInvitation (Entity invitationId invitation) =
-    Invitation { id    = Util.integerKey invitationId
+    Invitation { id    = Just $ Util.integerKey invitationId
                , email = SqlT.invitationEmail invitation
                , code  = SqlT.invitationCode invitation
                }
