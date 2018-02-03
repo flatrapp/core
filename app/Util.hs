@@ -9,8 +9,9 @@ module Util where
 import           Control.Arrow
 import           Control.Monad.IO.Class
 import           Control.Monad.Logger    (LoggingT, runStdoutLoggingT)
-import qualified Crypto.Hash.SHA512      as SHA
+import           Crypto.Hash
 import           Data.Aeson              hiding (json)
+import qualified Data.ByteArray          as BA
 import qualified Data.ByteString         as BS
 import qualified Data.ByteString.Base16  as B16
 import qualified Data.Text               as T
@@ -42,7 +43,7 @@ decodeHex = fst . B16.decode . E.encodeUtf8
 
 hashPassword :: T.Text -> BS.ByteString -> T.Text
 hashPassword password salt =
-     makeHex . SHA.finalize $ SHA.updates SHA.init [salt, E.encodeUtf8 password]
+     makeHex $ BA.convert . hashFinalize $ hashUpdates (hashInitWith SHA512) [salt, E.encodeUtf8 password]
 
 runSQL
   :: (HasSpock m, SpockConn m ~ SqlBackend)
