@@ -78,7 +78,7 @@ routeUsers = do
                   newId <- registerUser registration gen email True
                   returnUserById newId
                 else do
-                  maybeInvitation <- runSQL $ P.selectFirst [SqlT.InvitationEmail ==. email] [] 
+                  maybeInvitation <- runSQL $ P.selectFirst [SqlT.InvitationEmail ==. email] []
                   case maybeInvitation of
                     Just (Entity _invitationId _invitation) -> do
                       -- TODO send verification Email if smtp config set

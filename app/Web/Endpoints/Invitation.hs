@@ -7,10 +7,12 @@
 
 module Web.Endpoints.Invitation where
 
+import           Control.Monad.IO.Class
 import qualified Data.Text                  as T
 import           Database.Persist           hiding (delete, get)
 import qualified Database.Persist           as P
 import           Network.HTTP.Types.Status
+import           System.Random
 import           Text.Printf
 import           Web.Spock
 
@@ -41,9 +43,10 @@ routeInvitations = do
         setStatus badRequest400
         errorJson Util.BadRequest
       Just invitation -> do
+        gen <- liftIO getStdGen
         invitationId <- runSQL $
           insert SqlT.Invitation { SqlT.invitationEmail = JsonInvitation.email invitation
-                                 , SqlT.invitationCode  = Just . T.pack $ "code"
+                                 , SqlT.invitationCode  = Just $ Util.randomText 16 gen
                                  }
         maybeInvitation <- runSQL $ selectFirst [SqlT.InvitationId ==. invitationId] []
         case JsonInvitation.jsonInvitation <$> maybeInvitation of
