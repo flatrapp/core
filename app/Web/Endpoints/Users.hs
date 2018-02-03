@@ -67,8 +67,16 @@ routeUsers = do
                 runSQL $ P.updateWhere [SqlT.InvitationId ==. invitationId] []
                 setStatus created201
                 gen <- liftIO getStdGen
-                newId <- registerUser registration gen (SqlT.invitationEmail theInvitation) True
-                returnUserById newId
+                let email = SqlT.invitationEmail theInvitation
+                -- check if user exists
+                maybeUser <- runSQL $ P.selectFirst [SqlT.UserEmail ==. email] []
+                case maybeUser of
+                  Just _user -> do
+                    setStatus conflict409
+                    Util.errorJson Util.EmailExists
+                  Nothing -> do
+                    newId <- registerUser registration gen email True
+                    returnUserById newId
           Nothing -> do
             gen <- liftIO getStdGen
             case JsonRegistration.email registration of
@@ -81,10 +89,17 @@ routeUsers = do
                   maybeInvitation <- runSQL $ P.selectFirst [SqlT.InvitationEmail ==. email] []
                   case maybeInvitation of
                     Just (Entity _invitationId _invitation) -> do
-                      -- TODO send verification Email if smtp config set
-                      -- $frontedUrl/#signup?code=$code&serverUrl=$serverUrl
-                      newId <- registerUser registration gen email False
-                      returnUserById newId
+                      -- check if user exists
+                      maybeUser <- runSQL $ P.selectFirst [SqlT.UserEmail ==. email] []
+                      case maybeUser of
+                        Just _user -> do
+                          setStatus conflict409
+                          Util.errorJson Util.EmailExists
+                        Nothing -> do
+                          -- TODO send verification Email if smtp config set
+                          -- $frontedUrl/#signup?code=$code&serverUrl=$serverUrl
+                          newId <- registerUser registration gen email False
+                          returnUserById newId
                     Nothing -> do
                       -- User provided only email but is not invited
                       setStatus unauthorized401

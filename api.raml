@@ -400,6 +400,16 @@ types:
       200:
         body:
           type: User
+      409:
+        body:
+          type: Error
+          example: |
+            {
+              "error": {
+                "code": "email_exists",
+                "message": "A user with this email address already exists."
+              }
+            }
       400:
         body:
           type: Error
