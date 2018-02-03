@@ -80,8 +80,8 @@ errorJson err =
 
     conv' :: JsonError -> (String, String)
     conv' InvalidRequest        = ("invalid_request", "Invalid request.")
-    conv' CredentialsWrong      = ("user_password_wrong", "User does not exist or password is wrong.")
-    conv' Unauthorized          = ("aunauthorized", "Unauthorized.")
+    conv' CredentialsWrong      = ("credentials_wrong", "User does not exist or password is wrong.")
+    conv' Unauthorized          = ("unauthorized", "Unauthorized.")
     conv' UserNotFound          = ("user_not_found", "No user exists with this ID.")
     conv' TaskNotFound          = ("task_not_found", "No task exists with this ID.")
     conv' BadRequest            = ("bad_request", "Bad request. Not understood.")
