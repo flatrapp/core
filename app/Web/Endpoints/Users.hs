@@ -53,7 +53,7 @@ routeUsers = do
     case maybeRegistration of
       Nothing -> do
         setStatus badRequest400
-        errorJson Util.BadRequest
+        errorJson Util.BadRequest  -- malformed json
       Just registration ->
         case JsonRegistration.code registration of
           Just code -> do
@@ -62,7 +62,7 @@ routeUsers = do
             case maybeInvitation of
               Nothing -> do
                 setStatus notFound404
-                errorJson Util.InvalidInvitationCode
+                errorJson Util.NotInvited  -- code not in DB
               Just (Entity invitationId theInvitation) -> do
                 runSQL $ P.updateWhere [SqlT.InvitationId ==. invitationId] []
                 setStatus created201
@@ -87,12 +87,12 @@ routeUsers = do
                       returnUserById newId
                     Nothing -> do
                       -- User provided only email but is not invited
-                      setStatus badRequest400
-                      Util.errorJson Util.BadRequest
+                      setStatus unauthorized401
+                      Util.errorJson Util.NotInvited
               Nothing -> do
                 -- User should provide at least code or email
-                Util.errorJson Util.BadRequest  -- TODO check what it returns
                 setStatus badRequest400
+                Util.errorJson Util.BadRequest  -- TODO check what it returns
 
 -- TODO check that user is not there
 registerUser registration gen mail verified = runSQL $ insert user

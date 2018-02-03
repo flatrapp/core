@@ -60,6 +60,7 @@ data JsonError
   | NotFound
   | UserNotVerified
   | InvalidInvitationCode
+  | NotInvited
   deriving (Show)
 
 
@@ -87,7 +88,7 @@ errorJson err =
     conv' TokenInvalid          = ("token_invalid", "The token is invalid, you should authorize yourself again.")
     conv' NotFound              = ("not_found", "There's nothing here.")
     conv' UserNotVerified       = ("user_not_verified", "You have not verified your email address yet.")
-    conv' InvalidInvitationCode = ("invalid_invitation_code", "This is not a valid invitation code.")
+    conv' NotInvited            = ("not_invited", "You are not invited.")
 
 maybeToEither :: a -> Maybe b -> Either a b
 maybeToEither = flip maybe Right . Left
