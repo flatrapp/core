@@ -43,7 +43,8 @@ decodeHex = fst . B16.decode . E.encodeUtf8
 
 hashPassword :: T.Text -> BS.ByteString -> T.Text
 hashPassword password salt =
-         makeHex . throwCryptoError $ Ar2.hash Ar2.defaultOptions (E.encodeUtf8 password) salt 1024
+    makeHex . throwCryptoError $ Ar2.hash Ar2.defaultOptions (E.encodeUtf8 password) salt 1024
+    -- throwCryptoError can in theory throw, crashing the program. But this will happen only if salt length or output size are invalid. As this will never be the case (as long as we provide acceptable salts), this will never happen.
 
 runSQL
   :: (HasSpock m, SpockConn m ~ SqlBackend)
