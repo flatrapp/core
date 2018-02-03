@@ -59,7 +59,6 @@ data JsonError
   | TokenInvalid
   | NotFound
   | UserNotVerified
-  | InvalidInvitationCode
   | NotInvited
   deriving (Show)
 

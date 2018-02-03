@@ -50,7 +50,7 @@ routeAuth =
             if hashedPw /= userPassword user then do
               setStatus forbidden403
               Util.errorJson Util.UserPasswordWrong
-            else if userVerified user then do
+            else if not $ userVerified user then do
               setStatus forbidden403
               Util.errorJson Util.UserNotVerified
             else do
