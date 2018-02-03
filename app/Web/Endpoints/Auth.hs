@@ -52,7 +52,7 @@ routeAuth =
               Util.errorJson Util.UserPasswordWrong
             else if not $ userVerified user then do
               setStatus forbidden403
-              Util.errorJson Util.UserNotVerified
+              Util.errorJson Util.EmailNotVerified
             else do
               _newId <- Util.runSQL $ insert $ Token userId tokenId $ posixSecondsToUTCTime validUntil
               json $ object [ "token"    .= JWT.encodeSigned JWT.HS256 key cs

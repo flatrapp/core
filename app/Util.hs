@@ -58,7 +58,7 @@ data JsonError
   | BadRequest
   | TokenInvalid
   | NotFound
-  | UserNotVerified
+  | EmailNotVerified
   | NotInvited
   deriving (Show)
 
@@ -86,7 +86,7 @@ errorJson err =
     conv' BadRequest            = ("bad_request", "Bad request. Not understood.")
     conv' TokenInvalid          = ("token_invalid", "The token is invalid, you should authorize yourself again.")
     conv' NotFound              = ("not_found", "There's nothing here.")
-    conv' UserNotVerified       = ("user_not_verified", "You have not verified your email address yet.")
+    conv' EmailNotVerified      = ("email_not_verified", "You have not verified your email address yet.")
     conv' NotInvited            = ("not_invited", "You are not invited.")
 
 maybeToEither :: a -> Maybe b -> Either a b
