@@ -11,8 +11,8 @@
 module Web.Endpoints.Users where
 
 import           Control.Monad.IO.Class
+import qualified Config                       as Cfg
 import           Data.Maybe
-import qualified Data.Text                    as T
 import           Database.Persist             hiding (delete, get)
 import qualified Database.Persist             as P
 import qualified Model.CoreTypes              as SqlT
@@ -31,7 +31,7 @@ returnUserById userId = do
         errorJson Util.UserNotFound)
     (json . JsonUser.jsonUser <$> maybeUser)
 
-routeUsers = do
+routeUsers cfg = do
   get "users" $ do
     allUsers <- runSQL $ selectList [] [Asc SqlT.UserId]
     json $ map JsonUser.jsonUser allUsers
@@ -81,7 +81,7 @@ routeUsers = do
             gen <- liftIO getStdGen
             case JsonRegistration.email registration of
               Just email ->
-                if email `elem` [T.pack "ds@test.com"] then do  -- TODO via config
+                if email `elem` (Cfg.whitelistedMails cfg) then do
                   setStatus created201
                   newId <- registerUser registration gen email True
                   returnUserById newId

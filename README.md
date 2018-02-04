@@ -4,9 +4,10 @@
 
 ```
 cat > flatrapp.cfg << EOF
-db        = "flatrapp.db"
-port      = 8080
-jwtSecret = "secret"
+db               = "flatrapp.db"
+port             = 8080
+jwtSecret        = "secret"
+whitelistedMails = [ "foobar@example.org" ]
 EOF
 ```
 

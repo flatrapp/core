@@ -30,19 +30,20 @@ import           Web.Endpoints.Tasks
 import           Web.Endpoints.Users
 import qualified Web.JWT                   as JWT
 import           Web.Spock
+import           Config                    (FlatrCfg)
 
 textStringShow :: (Show a) => a -> ActionCtxT ctx (WebStateM SqlBackend () ()) a
 textStringShow = text . pack . show
 
-app :: Api ()
-app =
+app :: FlatrCfg -> Api ()
+app cfg =
   prehook corsHeader $
   prehook initHook $ do
     routeAuth
     routeTasks
     routeInfo
     routeInvitations
-    routeUsers
+    (routeUsers cfg)
     prehook authHook $ do
       get ("users" <//> "current") $ do  -- TODO move to Endpoints/Users.hs
         (email :: Text) <- fmap findFirst getContext
