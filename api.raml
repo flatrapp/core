@@ -166,7 +166,11 @@ types:
                 "completionTime": 5,
                 "users": [
                   1
-                ]
+                ],
+                "nextTurn": {
+                  "userId": 1,
+                  "startDate": $date
+                }
               }]
   post:
     description: |
@@ -226,9 +230,10 @@ types:
                 "users": [
                   1
                 ],
-                "turns": [{
+                "currentTurn": null,
+                "upcomingTurns": [{
                   "userId": 1,
-                  "date": "2015-07-04T21:00:00"
+                  "startDate": "2015-07-04T21:00:00"
                 }]
               }
         404:
@@ -274,9 +279,6 @@ types:
           }
       responses:
         200:
-          headers:
-            Location:
-              description: URL of the newly created task
           body:
             type: Task
             example: |

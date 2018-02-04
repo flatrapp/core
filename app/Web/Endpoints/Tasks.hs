@@ -15,24 +15,35 @@ import qualified Database.Persist          as P
 import qualified Database.Persist.Sql      as PSql
 import           Network.HTTP.Types.Status
 import           Text.Printf
-import           Web.Spock
+import           Web.Spock                 hiding (head)
 
 import qualified Model.CoreTypes           as SqlT
 import qualified Model.JsonTypes.Task      as JsonTask
+import qualified Model.JsonTypes.Turn      as JsonTurn
 import           Util                      (errorJson, runSQL)
 import qualified Util
 
 routeTasks = do
   get "tasks" $ do
     allTasks <- runSQL $ selectList [] [Asc SqlT.TaskId]
-    json $ map JsonTask.jsonTask allTasks
+    json $ map (JsonTask.jsonTask [] (Nothing, [])) allTasks  -- TODO query users and turns
   get ("tasks" <//> var) $ \(taskId :: SqlT.TaskId) -> do
     maybeTask <- runSQL $ P.selectFirst [SqlT.TaskId ==. taskId] []
-    case JsonTask.jsonTask <$> maybeTask of
+    case maybeTask of
       Nothing -> do
         setStatus notFound404
         errorJson Util.TaskNotFound
-      Just theTask -> json theTask  -- TODO return turns
+      Just theTask@(Entity taskId task) -> do
+        taskUsers <- runSQL $ P.selectList [SqlT.TaskUserTaskId ==. taskId] []
+        let users = map (\(Entity _ taskUser) -> SqlT.taskUserUserId taskUser) taskUsers  -- TODO integrate in line above
+        turns <- runSQL $ P.selectList [SqlT.TurnTaskId ==. taskId] [Asc SqlT.TurnDate]
+        let turns' = map JsonTurn.jsonTurn turns  -- TODO integrate in line above
+        currentTime <- liftIO getCurrentTime
+        let splitTurns = if currentTime >  JsonTurn.date (head turns')  then
+                           (Just $ head turns', tail turns')
+                         else
+                           (Nothing, turns')
+        json $ JsonTask.jsonTask users splitTurns theTask
   delete ("tasks" <//> var) $ \(taskId :: SqlT.TaskId) -> do
     maybeTask <- runSQL $ P.get taskId :: SqlT.ApiAction ctx (Maybe SqlT.Task)
     case maybeTask of
@@ -72,7 +83,7 @@ routeTasks = do
             , SqlT.turnDate   = currentTime  -- TODO something real
             }
         maybeTask <- runSQL $ selectFirst [SqlT.TaskId ==. taskId] []
-        case JsonTask.jsonTask <$> maybeTask of
+        case JsonTask.jsonTask [] (Nothing, []) <$> maybeTask of  -- TODO think about what to do with users and turns
           Nothing -> error "I fucked up #1"
           Just theTask -> do
             setStatus created201
