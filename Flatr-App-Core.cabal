@@ -37,7 +37,6 @@ executable Flatr-App-Core-exe
                      , bytestring
                      , base16-bytestring >=0.1
                      , cryptonite >=0.24
-                     , memory
   default-language:    Haskell2010
 
 source-repository head
