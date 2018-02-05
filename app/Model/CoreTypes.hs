@@ -28,7 +28,7 @@ User json
   lastName  Text
   verified  Bool
 
-  UniqueEmail email
+  UniqueUserEmail email
 
   deriving Show
 
@@ -40,6 +40,7 @@ Token
 TaskUser
   taskId TaskId
   userId UserId
+
   UniqueTaskUser taskId userId
 
 Turn json
@@ -56,4 +57,6 @@ Invitation json
   email Text
   code  Text Maybe
   deriving Show
+
+  UniqueInvitationEmail email
 |]

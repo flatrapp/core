@@ -71,12 +71,13 @@ routeTasks = do
         -- post new TaskUsers  TODO return in response
         currentTime <- liftIO getCurrentTime
         let users = JsonTask.users task
-        let insertIt userId = runSQL $ insert SqlT.TaskUser {
+        let insertIt userId = runSQL $ insertUnique SqlT.TaskUser {
               SqlT.taskUserTaskId = taskId
             , SqlT.taskUserUserId = PSql.toSqlKey . fromInteger $ userId
             }
-        _ <- mapM insertIt users -- TODO check return value
+        _ <- mapM insertIt users -- TODO check return value including Maybes
         -- post initial Turn TODO return in response
+        -- TODO check if users is empty
         turnId <- runSQL $ insert SqlT.Turn {
               SqlT.turnUserId = PSql.toSqlKey . fromInteger . Prelude.head $ users
             , SqlT.turnTaskId = taskId

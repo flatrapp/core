@@ -44,16 +44,21 @@ routeInvitations = do
         errorJson Util.BadRequest
       Just invitation -> do
         gen <- liftIO getStdGen
-        invitationId <- runSQL $
-          insert SqlT.Invitation { SqlT.invitationEmail = JsonInvitation.email invitation
+        maybeInvitationId <- runSQL $
+          insertUnique SqlT.Invitation { SqlT.invitationEmail = JsonInvitation.email invitation
                                  , SqlT.invitationCode  = Just $ Util.randomText 16 gen
                                  }
-        maybeInvitation <- runSQL $ selectFirst [SqlT.InvitationId ==. invitationId] []
-        case JsonInvitation.jsonInvitation <$> maybeInvitation of
-          Nothing -> error "I fucked up #2"
-          Just theInvitation -> do
-            -- TODO send invitation email if smtp config is set
-            setStatus created201
-            let location :: T.Text = T.pack $ printf "/invitation/%d" (Util.integerKey invitationId :: Integer)
-            setHeader "Location" location
-            json theInvitation
+        case maybeInvitationId of
+          Nothing -> do
+            setStatus conflict409
+            errorJson Util.InvitationEmailExists
+          Just invitationId -> do
+            maybeInvitation <- runSQL $ selectFirst [SqlT.InvitationId ==. invitationId] []
+            case JsonInvitation.jsonInvitation <$> maybeInvitation of
+              Nothing -> error "I fucked up #2"
+              Just theInvitation -> do
+                -- TODO send invitation email if smtp config is set
+                setStatus created201
+                let location :: T.Text = T.pack $ printf "/invitation/%d" (Util.integerKey invitationId :: Integer)
+                setHeader "Location" location
+                json theInvitation

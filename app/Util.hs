@@ -61,7 +61,8 @@ data JsonError
   | EmailNotVerified
   | InvitationCodeInvalid
   | NotInvited
-  | EmailExists
+  | UserEmailExists
+  | InvitationEmailExists
   deriving (Show)
 
 
@@ -91,7 +92,8 @@ errorJson err =
     conv' EmailNotVerified      = ("email_not_verified", "You have not verified your email address yet.")
     conv' InvitationCodeInvalid = ("invitation_code_invalid", "This is not a valid invitation code.")
     conv' NotInvited            = ("not_invited", "Your email address is not invited.")
-    conv' EmailExists           = ("email_exists", "A user with this email address already exists.")
+    conv' UserEmailExists       = ("user_email_exists", "A user with this email address already exists.")
+    conv' InvitationEmailExists = ("invitation_email_exists", "An invitation with this email address already exists.")
 
 maybeToEither :: a -> Maybe b -> Either a b
 maybeToEither = flip maybe Right . Left

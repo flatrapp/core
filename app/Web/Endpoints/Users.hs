@@ -24,7 +24,11 @@ import           Util                         (errorJson, runSQL)
 import qualified Util
 import           Web.Spock
 
-returnUserById userId = do
+returnUserById Nothing = do
+  -- TODO combine with registration... because this function is also called once when there is no registration happening
+  setStatus conflict409
+  Util.errorJson Util.UserEmailExists
+returnUserById (Just userId ) = do
   maybeUser <- runSQL $ P.selectFirst [SqlT.UserId ==. userId] []
   fromMaybe
     (do setStatus notFound404
@@ -36,7 +40,7 @@ routeUsers cfg = do
     allUsers <- runSQL $ selectList [] [Asc SqlT.UserId]
     json $ map JsonUser.jsonUser allUsers
   get ("users" <//> var) $ \userId ->
-    returnUserById userId
+    returnUserById $ Just userId
   delete ("user" <//> var) $ \(userId :: SqlT.UserId) -> do
     maybeUser <- runSQL $ P.get userId :: SqlT.ApiAction ctx (Maybe SqlT.User)
     case maybeUser of
@@ -73,7 +77,7 @@ routeUsers cfg = do
                 case maybeUser of
                   Just _user -> do
                     setStatus conflict409
-                    Util.errorJson Util.EmailExists
+                    Util.errorJson Util.UserEmailExists
                   Nothing -> do
                     newId <- registerUser registration gen email True
                     returnUserById newId
@@ -94,7 +98,7 @@ routeUsers cfg = do
                       case maybeUser of
                         Just _user -> do
                           setStatus conflict409
-                          Util.errorJson Util.EmailExists
+                          Util.errorJson Util.UserEmailExists
                         Nothing -> do
                           -- TODO send verification Email if smtp config set
                           -- $frontedUrl/#signup?code=$code&serverUrl=$serverUrl
@@ -110,7 +114,7 @@ routeUsers cfg = do
                 Util.errorJson Util.BadRequest  -- TODO check what it returns
 
 -- TODO check that user is not there
-registerUser registration gen mail verified = runSQL $ insert user
+registerUser registration gen mail verified = runSQL $ insertUnique user
     where user = SqlT.User
                     { SqlT.userEmail     = mail
                     , SqlT.userPassword  = hashedSaltedPassword
