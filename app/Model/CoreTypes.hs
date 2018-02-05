@@ -50,6 +50,7 @@ Turn json
 
 Task json
   title          Text
+  description    Text
   frequency      Int
   completionTime Int
 

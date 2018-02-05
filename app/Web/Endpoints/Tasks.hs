@@ -33,7 +33,7 @@ routeTasks = do
       Nothing -> do
         setStatus notFound404
         errorJson Util.TaskNotFound
-      Just theTask@(Entity taskId task) -> do
+      Just theTask@(Entity taskId _task) -> do
         taskUsers <- runSQL $ P.selectList [SqlT.TaskUserTaskId ==. taskId] []
         let users = map (\(Entity _ taskUser) -> SqlT.taskUserUserId taskUser) taskUsers  -- TODO integrate in line above
         turns <- runSQL $ P.selectList [SqlT.TurnTaskId ==. taskId] [Asc SqlT.TurnDate]
@@ -65,6 +65,7 @@ routeTasks = do
         -- post actual Task
         taskId <- runSQL $ insert SqlT.Task {
               SqlT.taskTitle          = JsonTask.title task
+            , SqlT.taskDescription    = JsonTask.description task
             , SqlT.taskFrequency      = JsonTask.frequency task
             , SqlT.taskCompletionTime = JsonTask.completionTime task
             }
@@ -78,7 +79,7 @@ routeTasks = do
         _ <- mapM insertIt users -- TODO check return value including Maybes
         -- post initial Turn TODO return in response
         -- TODO check if users is empty
-        turnId <- runSQL $ insert SqlT.Turn {
+        _turnId <- runSQL $ insert SqlT.Turn {
               SqlT.turnUserId = PSql.toSqlKey . fromInteger . Prelude.head $ users
             , SqlT.turnTaskId = taskId
             , SqlT.turnDate   = currentTime  -- TODO something real

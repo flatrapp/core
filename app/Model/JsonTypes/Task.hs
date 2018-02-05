@@ -14,6 +14,7 @@ import qualified Util
 data Task =
     Task { id             :: Maybe Integer
          , title          :: Text
+         , description    :: Text
          , frequency      :: Int
          , completionTime :: Int
          , users          :: [Integer]
@@ -29,6 +30,7 @@ jsonTask :: [Key SqlT.User] -> (Maybe Turn, [Turn]) -> Entity SqlT.Task -> Task
 jsonTask users (currentTurn', upcomingTurns') (Entity taskId task) =
     Task { id             = Just $ Util.integerKey taskId
          , title          = SqlT.taskTitle task
+         , description    = SqlT.taskDescription task
          , frequency      = SqlT.taskFrequency task
          , completionTime = SqlT.taskCompletionTime task
          , users          = map Util.integerKey users
