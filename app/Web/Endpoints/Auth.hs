@@ -8,6 +8,7 @@
 module Web.Endpoints.Auth where
 
 import           Control.Monad.IO.Class
+import           Crypto.Random
 import           Data.Aeson                       hiding (json)
 import           Data.Text                        (Text)
 import           Data.Time.Clock.POSIX            (POSIXTime, getPOSIXTime,
@@ -32,8 +33,8 @@ routeAuth =
       Just loginCredentials -> do
         currentTime <- liftIO getPOSIXTime
         let validUntil = currentTime + tokenTimeout + tokenGracePeriod
-        gen <- liftIO getStdGen
-        let tokenId =  Util.randomText 64 gen
+        byteArray <- liftIO $ getRandomBytes 10
+        let tokenId = Util.makeHex byteArray
         let key = JWT.secret jwtSecret
         let cs = JWT.def { JWT.exp = JWT.numericDate validUntil
                          , JWT.jti = JWT.stringOrURI tokenId

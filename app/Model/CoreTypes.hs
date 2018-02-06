@@ -37,6 +37,8 @@ Token
   tokenId    Text
   validUntil UTCTime
 
+  UniqueTokenId
+
 TaskUser
   taskId TaskId
   userId UserId
