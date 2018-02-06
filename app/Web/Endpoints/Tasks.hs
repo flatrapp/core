@@ -23,27 +23,30 @@ import qualified Model.JsonTypes.Turn      as JsonTurn
 import           Util                      (errorJson, runSQL)
 import qualified Util
 
+getTaskInfo fun theTask@(Entity taskId _task) = do
+  taskUsers <- runSQL $ P.selectList [SqlT.TaskUserTaskId ==. taskId] []
+  let users = map (\(Entity _ taskUser) -> SqlT.taskUserUserId taskUser) taskUsers  -- TODO integrate in line above
+  turns <- runSQL $ P.selectList [SqlT.TurnTaskId ==. taskId] [Asc SqlT.TurnDate]
+  let turns' = map JsonTurn.jsonTurn turns  -- TODO integrate in line above
+  currentTime <- liftIO getCurrentTime
+  let splitTurns = if currentTime > JsonTurn.startDate (head turns')  then
+                     (Just $ head turns', tail turns')
+                   else
+                     (Nothing, turns')
+  fun $ JsonTask.jsonTask users splitTurns theTask
+
 routeTasks = do
   get "tasks" $ do
     allTasks <- runSQL $ selectList [] [Asc SqlT.TaskId]
-    json $ map (JsonTask.jsonTask [] (Nothing, [])) allTasks  -- TODO query users and turns
+    json =<< mapM (getTaskInfo return) allTasks
   get ("tasks" <//> var) $ \(taskId :: SqlT.TaskId) -> do
     maybeTask <- runSQL $ P.selectFirst [SqlT.TaskId ==. taskId] []
     case maybeTask of
       Nothing -> do
         setStatus notFound404
         errorJson Util.TaskNotFound
-      Just theTask@(Entity taskId _task) -> do
-        taskUsers <- runSQL $ P.selectList [SqlT.TaskUserTaskId ==. taskId] []
-        let users = map (\(Entity _ taskUser) -> SqlT.taskUserUserId taskUser) taskUsers  -- TODO integrate in line above
-        turns <- runSQL $ P.selectList [SqlT.TurnTaskId ==. taskId] [Asc SqlT.TurnDate]
-        let turns' = map JsonTurn.jsonTurn turns  -- TODO integrate in line above
-        currentTime <- liftIO getCurrentTime
-        let splitTurns = if currentTime >  JsonTurn.date (head turns')  then
-                           (Just $ head turns', tail turns')
-                         else
-                           (Nothing, turns')
-        json $ JsonTask.jsonTask users splitTurns theTask
+      Just theTask ->
+        getTaskInfo json theTask
   delete ("tasks" <//> var) $ \(taskId :: SqlT.TaskId) -> do
     maybeTask <- runSQL $ P.get taskId :: SqlT.ApiAction ctx (Maybe SqlT.Task)
     case maybeTask of
@@ -67,9 +70,9 @@ routeTasks = do
               SqlT.taskTitle          = JsonTask.title task
             , SqlT.taskDescription    = JsonTask.description task
             , SqlT.taskFrequency      = JsonTask.frequency task
-            , SqlT.taskCompletionTime = JsonTask.completionTime task
+            , SqlT.taskCompletionTime = 1 + JsonTask.completionTime task  -- TODO assert than cannot be negative TODO do something smart
             }
-        -- post new TaskUsers  TODO return in response
+        -- post new TaskUsers
         currentTime <- liftIO getCurrentTime
         let users = JsonTask.users task
         let insertIt userId = runSQL $ insertUnique SqlT.TaskUser {
@@ -77,7 +80,7 @@ routeTasks = do
             , SqlT.taskUserUserId = PSql.toSqlKey . fromInteger $ userId
             }
         _ <- mapM insertIt users -- TODO check return value including Maybes
-        -- post initial Turn TODO return in response
+        -- post initial Turn
         -- TODO check if users is empty
         _turnId <- runSQL $ insert SqlT.Turn {
               SqlT.turnUserId = PSql.toSqlKey . fromInteger . Prelude.head $ users
@@ -85,10 +88,10 @@ routeTasks = do
             , SqlT.turnDate   = currentTime  -- TODO something real
             }
         maybeTask <- runSQL $ selectFirst [SqlT.TaskId ==. taskId] []
-        case JsonTask.jsonTask [] (Nothing, []) <$> maybeTask of  -- TODO think about what to do with users and turns
+        case maybeTask of
           Nothing -> error "I fucked up #1"
           Just theTask -> do
             setStatus created201
             let location :: T.Text = T.pack $ printf "/tasks/%d" (Util.integerKey taskId :: Integer)
             setHeader "Location" location
-            json theTask
+            getTaskInfo json theTask

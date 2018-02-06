@@ -12,7 +12,7 @@ import qualified Util
 
 data Turn =
     Turn { userId :: Integer  -- UserId
-         , date   :: UTCTime
+         , startDate   :: UTCTime
          } deriving (Show, Generic)
 
 instance ToJSON Turn
@@ -21,5 +21,5 @@ instance FromJSON Turn
 jsonTurn :: Entity SqlT.Turn -> Turn
 jsonTurn (Entity _turnId turn) =
     Turn { userId = Util.integerKey . SqlT.turnUserId $ turn
-         , date   = SqlT.turnDate turn
+         , startDate   = SqlT.turnDate turn
          }
