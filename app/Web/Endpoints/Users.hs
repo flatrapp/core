@@ -10,8 +10,8 @@
 
 module Web.Endpoints.Users where
 
-import           Control.Monad.IO.Class
 import qualified Config                       as Cfg
+import           Control.Monad.IO.Class
 import           Data.Maybe
 import           Database.Persist             hiding (delete, get)
 import qualified Database.Persist             as P
@@ -36,9 +36,8 @@ returnUserById (Just userId ) = do
     (json . JsonUser.jsonUser <$> maybeUser)
 
 routeUsers cfg = do
-  get "users" $ do
-    allUsers <- runSQL $ selectList [] [Asc SqlT.UserId]
-    json $ map JsonUser.jsonUser allUsers
+  get "users" $
+    json =<< (map JsonUser.jsonUser <$> runSQL (selectList [] [Asc SqlT.UserId]))
   get ("users" <//> var) $ \userId ->
     returnUserById $ Just userId
   delete ("user" <//> var) $ \(userId :: SqlT.UserId) -> do
@@ -85,7 +84,7 @@ routeUsers cfg = do
             gen <- liftIO getStdGen
             case JsonRegistration.email registration of
               Just email ->
-                if email `elem` (Cfg.whitelistedMails cfg) then do
+                if email `elem` Cfg.whitelistedMails cfg then do
                   setStatus created201
                   newId <- registerUser registration gen email True
                   returnUserById newId
@@ -99,11 +98,11 @@ routeUsers cfg = do
                         Just _user -> do
                           setStatus conflict409
                           Util.errorJson Util.UserEmailExists
-                        Nothing -> do
+                        Nothing ->
                           -- TODO send verification Email if smtp config set
                           -- $frontedUrl/#signup?code=$code&serverUrl=$serverUrl
-                          newId <- registerUser registration gen email False
-                          returnUserById newId
+                          registerUser registration gen email False
+                            >>= returnUserById
                     Nothing -> do
                       -- User provided only email but is not invited
                       setStatus unauthorized401

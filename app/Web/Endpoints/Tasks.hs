@@ -24,21 +24,20 @@ import           Util                      (errorJson, runSQL)
 import qualified Util
 
 getTaskInfo fun theTask@(Entity taskId _task) = do
-  taskUsers <- runSQL $ P.selectList [SqlT.TaskUserTaskId ==. taskId] []
-  let users = map (\(Entity _ taskUser) -> SqlT.taskUserUserId taskUser) taskUsers  -- TODO integrate in line above
-  turns <- runSQL $ P.selectList [SqlT.TurnTaskId ==. taskId] [Asc SqlT.TurnDate]
-  let turns' = map JsonTurn.jsonTurn turns  -- TODO integrate in line above
+  users <- map (\(Entity _ taskUser) -> SqlT.taskUserUserId taskUser)
+             <$> runSQL (P.selectList [SqlT.TaskUserTaskId ==. taskId] [])
+  turns <- map JsonTurn.jsonTurn
+             <$> runSQL (P.selectList [SqlT.TurnTaskId ==. taskId] [Asc SqlT.TurnDate])
   currentTime <- liftIO getCurrentTime
-  let splitTurns = if currentTime > JsonTurn.startDate (head turns')  then
-                     (Just $ head turns', tail turns')
+  let splitTurns = if currentTime > JsonTurn.startDate (head turns)  then
+                     (Just $ head turns, tail turns) -- TODO deal with empty turns
                    else
-                     (Nothing, turns')
+                     (Nothing, turns)
   fun $ JsonTask.jsonTask users splitTurns theTask
 
 routeTasks = do
-  get "tasks" $ do
-    allTasks <- runSQL $ selectList [] [Asc SqlT.TaskId]
-    json =<< mapM (getTaskInfo return) allTasks
+  get "tasks" $
+    json =<< mapM (getTaskInfo return) =<< runSQL (selectList [] [Asc SqlT.TaskId])
   get ("tasks" <//> var) $ \(taskId :: SqlT.TaskId) -> do
     maybeTask <- runSQL $ P.selectFirst [SqlT.TaskId ==. taskId] []
     case maybeTask of
@@ -70,7 +69,7 @@ routeTasks = do
               SqlT.taskTitle          = JsonTask.title task
             , SqlT.taskDescription    = JsonTask.description task
             , SqlT.taskFrequency      = JsonTask.frequency task
-            , SqlT.taskCompletionTime = 1 + JsonTask.completionTime task  -- TODO assert than cannot be negative TODO do something smart
+            , SqlT.taskCompletionTime = JsonTask.completionTime task  -- TODO assert than cannot be negative
             }
         -- post new TaskUsers
         currentTime <- liftIO getCurrentTime
@@ -85,10 +84,10 @@ routeTasks = do
         _turnId <- runSQL $ insert SqlT.Turn {
               SqlT.turnUserId = PSql.toSqlKey . fromInteger . Prelude.head $ users
             , SqlT.turnTaskId = taskId
-            , SqlT.turnDate   = currentTime  -- TODO something real
+            , SqlT.turnDate   = (realToFrac 1) `addUTCTime` currentTime  -- TODO something smart
             }
-        maybeTask <- runSQL $ selectFirst [SqlT.TaskId ==. taskId] []
-        case maybeTask of
+        maybeTask' <- runSQL $ selectFirst [SqlT.TaskId ==. taskId] []
+        case maybeTask' of
           Nothing -> error "I fucked up #1"
           Just theTask -> do
             setStatus created201

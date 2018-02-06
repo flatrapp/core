@@ -8,6 +8,7 @@
 module Web.Endpoints.Invitation where
 
 import           Control.Monad.IO.Class
+import           Crypto.Random
 import qualified Data.Text                  as T
 import           Database.Persist           hiding (delete, get)
 import qualified Database.Persist           as P
@@ -33,28 +34,27 @@ routeInvitations = do
         errorJson Util.NotFound
       Just _theInvitation -> do
         setStatus noContent204
-        runSQL $ P.delete invitationId  -- TODO check return value
+        runSQL $ P.delete invitationId
         text ""  -- TODO check if I can send empty response
   post "invitations" $ do
-    -- TODO requires authentication only when there already is an invitation
     maybeInvitation <- jsonBody :: SqlT.ApiAction ctx (Maybe JsonInvitation.Invitation)
     case maybeInvitation of
       Nothing -> do
         setStatus badRequest400
         errorJson Util.BadRequest
       Just invitation -> do
-        gen <- liftIO getStdGen
+        invitationCode <- Util.makeHex <$> liftIO (getRandomBytes 10)
         maybeInvitationId <- runSQL $
           insertUnique SqlT.Invitation { SqlT.invitationEmail = JsonInvitation.email invitation
-                                 , SqlT.invitationCode  = Just $ Util.randomText 16 gen
-                                 }
+                                       , SqlT.invitationCode  = Just invitationCode
+                                       }
         case maybeInvitationId of
           Nothing -> do
             setStatus conflict409
             errorJson Util.InvitationEmailExists
           Just invitationId -> do
-            maybeInvitation <- runSQL $ selectFirst [SqlT.InvitationId ==. invitationId] []
-            case JsonInvitation.jsonInvitation <$> maybeInvitation of
+            maybeInvitation' <- runSQL $ selectFirst [SqlT.InvitationId ==. invitationId] []
+            case JsonInvitation.jsonInvitation <$> maybeInvitation' of
               Nothing -> error "I fucked up #2"
               Just theInvitation -> do
                 -- TODO send invitation email if smtp config is set

@@ -3,16 +3,16 @@
 module Web.Endpoints.Info where
 
 import           Control.Monad.IO.Class
-import           Data.Text              (Text, pack)
+import           Data.Text              (Text)
 import           Data.Time.Clock        (getCurrentTime)
 import           Model.JsonTypes.Info
 import           Web.Spock
 
 apiVersion :: Text
-apiVersion = pack "v0.1"
+apiVersion = "v0.1"
 
 serverName :: Text
-serverName = pack "core"
+serverName = "core"
 
 routeInfo =
   get "info" $ do

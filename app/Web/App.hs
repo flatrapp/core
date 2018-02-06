@@ -7,6 +7,7 @@
 
 module Web.App where
 
+import           Config                    (FlatrCfg)
 import           Control.Monad.IO.Class
 import           Data.HVect                hiding (pack)
 import           Data.Monoid               ((<>))
@@ -30,7 +31,6 @@ import           Web.Endpoints.Tasks
 import           Web.Endpoints.Users
 import qualified Web.JWT                   as JWT
 import           Web.Spock
-import           Config                    (FlatrCfg)
 
 textStringShow :: (Show a) => a -> ActionCtxT ctx (WebStateM SqlBackend () ()) a
 textStringShow = text . pack . show
@@ -105,7 +105,7 @@ authHook = do
             case maybeTokenId `Util.maybeTuple` maybeSubject of
               Nothing -> Util.errorJson Util.TokenInvalid
               Just (tokenId, subject) -> do
-                let tokenIdText = pack . show $ tokenId -- make typesafe with signature
+                let tokenIdText = pack . show $ tokenId -- TODO make typesafe with signature
                 maybeT <- Util.runSQL $ P.selectFirst [TokenTokenId ==. tokenIdText] []
                 case maybeT of
                   Nothing -> do
@@ -113,8 +113,7 @@ authHook = do
                     Util.errorJson Util.Unauthorized
                   Just (Entity _tokenId token) -> do
                     currentTime <- liftIO getCurrentTime
-                    let tokenTimeout = tokenValidUntil token
-                    if tokenTimeout < currentTime then do
+                    if tokenValidUntil token < currentTime then do
                       let _ = token :: Token
                       setStatus unauthorized401
                       Util.errorJson Util.Unauthorized
