@@ -20,6 +20,6 @@ instance FromJSON Turn
 
 jsonTurn :: Entity SqlT.Turn -> Turn
 jsonTurn (Entity _turnId turn) =
-    Turn { userId = Util.integerKey . SqlT.turnUserId $ turn
-         , startDate   = SqlT.turnDate turn
+    Turn { userId    = Util.integerKey . SqlT.turnUserId $ turn
+         , startDate = SqlT.turnStartDate turn
          }

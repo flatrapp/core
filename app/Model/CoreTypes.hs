@@ -46,9 +46,10 @@ TaskUser
   UniqueTaskUser taskId userId
 
 Turn json
-  userId UserId
-  taskId TaskId
-  date   UTCTime
+  userId     UserId
+  taskId     TaskId
+  startDate  UTCTime
+  finishedAt UTCTime Maybe
 
 Task json
   title          Text

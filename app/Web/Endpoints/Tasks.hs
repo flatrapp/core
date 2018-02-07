@@ -27,7 +27,7 @@ getTaskInfo fun theTask@(Entity taskId _task) = do
   users <- map (\(Entity _ taskUser) -> SqlT.taskUserUserId taskUser)
              <$> runSQL (P.selectList [SqlT.TaskUserTaskId ==. taskId] [])
   turns <- map JsonTurn.jsonTurn
-             <$> runSQL (P.selectList [SqlT.TurnTaskId ==. taskId] [Asc SqlT.TurnDate])
+             <$> runSQL (P.selectList [SqlT.TurnTaskId ==. taskId, SqlT.TurnFinishedAt ==. Nothing] [Asc SqlT.TurnStartDate])
   currentTime <- liftIO getCurrentTime
   let splitTurns = if currentTime > JsonTurn.startDate (head turns)  then
                      (Just $ head turns, tail turns) -- TODO deal with empty turns
@@ -56,7 +56,18 @@ routeTasks = do
         runSQL $ P.delete taskId
         setStatus noContent204
         text ""  -- TODO check if empty response is possible
-  -- TODO implement put "tasks" $ do
+  post ("tasks" <//> var <//> "finish") $ \(taskId :: SqlT.TaskId) -> do
+    maybeTurn <- runSQL $ P.selectFirst [SqlT.TurnTaskId ==. taskId] []
+    case maybeTurn of
+      Nothing -> do
+        setStatus notFound404
+        errorJson Util.TaskNotFound
+      Just _theTurn -> do
+        currentTime <- liftIO getCurrentTime
+        runSQL $ P.updateWhere [SqlT.TurnTaskId ==. taskId] [SqlT.TurnFinishedAt =. Just currentTime]
+        setStatus noContent204
+        text ""  -- TODO check if empty response is possible
+  -- TODO implement put "tasks <//> var"
   post "tasks" $ do
     maybeTask <- jsonBody :: SqlT.ApiAction ctx (Maybe JsonTask.Task)
     case maybeTask of
@@ -82,9 +93,10 @@ routeTasks = do
         -- post initial Turn
         -- TODO check if users is empty
         _turnId <- runSQL $ insert SqlT.Turn {
-              SqlT.turnUserId = PSql.toSqlKey . fromInteger . Prelude.head $ users
-            , SqlT.turnTaskId = taskId
-            , SqlT.turnDate   = (realToFrac 1) `addUTCTime` currentTime  -- TODO something smart
+              SqlT.turnUserId     = PSql.toSqlKey . fromInteger . Prelude.head $ users
+            , SqlT.turnTaskId     = taskId
+            , SqlT.turnStartDate  = realToFrac 1 `addUTCTime` currentTime  -- TODO something smart
+            , SqlT.turnFinishedAt = Nothing
             }
         maybeTask' <- runSQL $ selectFirst [SqlT.TaskId ==. taskId] []
         case maybeTask' of
