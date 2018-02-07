@@ -305,6 +305,22 @@ types:
                   "message": "The task was not found"
                 }
               }
+    /finish:
+      post:
+        description: Finish the currently active turn
+        responses:
+          204:
+            description: Task was successfully finishsed
+          404:
+            body:
+              type: Error
+              example: |
+                {
+                  "error": {
+                    "code": "task_not_found",
+                    "message": "The task was not found"
+                  }
+                }
 
 /auth:
   post:

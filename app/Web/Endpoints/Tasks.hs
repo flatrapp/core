@@ -64,7 +64,12 @@ routeTasks = do
         errorJson Util.TaskNotFound
       Just _theTurn -> do
         currentTime <- liftIO getCurrentTime
-        runSQL $ P.updateWhere [SqlT.TurnTaskId ==. taskId] [SqlT.TurnFinishedAt =. Just currentTime]
+        runSQL $ P.updateWhere
+          [ SqlT.TurnTaskId ==. taskId
+          , SqlT.TurnFinishedAt ==. Nothing
+          , SqlT.TurnStartDate <. currentTime
+          ]
+          [SqlT.TurnFinishedAt =. Just currentTime]
         setStatus noContent204
         text ""  -- TODO check if empty response is possible
   -- TODO implement put "tasks <//> var"
