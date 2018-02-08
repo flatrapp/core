@@ -15,29 +15,33 @@ import           Data.Time.Clock.POSIX            (POSIXTime, getPOSIXTime,
                                                    posixSecondsToUTCTime)
 import qualified Database.Persist                 as P
 import           Database.Persist.Sql             hiding (delete, get)
-import           Model.CoreTypes
+import qualified Model.CoreTypes                  as SqlT
 import           Model.JsonTypes.LoginCredentials
 import           Network.HTTP.Types.Status
 import qualified Util
 import qualified Web.JWT                          as JWT
 import           Web.Spock
 
-postAuthAction :: Maybe LoginCredentials -> ApiAction ctx a
+routeAuth :: SqlT.Api ctx
+routeAuth =
+  post "auth" $ jsonBody >>= postAuthAction
+
+postAuthAction :: Maybe LoginCredentials -> SqlT.ApiAction ctx a
 postAuthAction Nothing = do
   setStatus badRequest400
   Util.errorJson Util.InvalidRequest
 postAuthAction (Just loginCredentials) = do
-  maybeUser <- Util.runSQL $ P.selectFirst [UserEmail ==. email loginCredentials] []  -- TODO chain this somehow with the Maybe LoginCredentials
+  maybeUser <- Util.runSQL $ P.selectFirst [SqlT.UserEmail ==. email loginCredentials] []  -- TODO chain this somehow with the Maybe LoginCredentials
   case maybeUser of
     Nothing -> do
       setStatus forbidden403
       Util.errorJson Util.CredentialsWrong
     Just (Entity userId user) -> do
-      let hashedPw = Util.hashPassword (password loginCredentials) (Util.decodeHex . userSalt $ user)
-      if hashedPw /= userPassword user then do
+      let hashedPw = Util.hashPassword (password loginCredentials) (Util.decodeHex . SqlT.userSalt $ user)
+      if hashedPw /= SqlT.userPassword user then do
         setStatus forbidden403
         Util.errorJson Util.CredentialsWrong
-      else if not $ userVerified user then do
+      else if not $ SqlT.userVerified user then do
         setStatus forbidden403
         Util.errorJson Util.EmailNotVerified
       else do
@@ -49,14 +53,11 @@ postAuthAction (Just loginCredentials) = do
                          , JWT.jti = JWT.stringOrURI tokenId
                          , JWT.sub = JWT.stringOrURI $ email loginCredentials
                          }
-        _newId <- Util.runSQL . insert $ Token userId tokenId $ posixSecondsToUTCTime validUntil
+        _newId <- Util.runSQL . insert $ SqlT.Token userId tokenId $ posixSecondsToUTCTime validUntil
         json $ object [ "token"    .= JWT.encodeSigned JWT.HS256 key cs
                       , "tokenId"  .= tokenId
                       , "validFor" .= tokenTimeout
                       ]
-
-routeAuth =
-  post "auth" $ jsonBody >>= postAuthAction
 
 tokenTimeout :: Data.Time.Clock.POSIX.POSIXTime
 tokenTimeout = 60 * 60

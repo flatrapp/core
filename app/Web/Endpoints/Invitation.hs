@@ -20,6 +20,7 @@ import qualified Model.JsonTypes.Invitation as JsonInvitation
 import           Util                       (errorJson, runSQL)
 import qualified Util
 
+routeInvitations :: SqlT.Api ctx
 routeInvitations = do
   get "invitations" getInvitationAction
   delete ("invitations" <//> var) $ \invitationId ->

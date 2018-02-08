@@ -23,6 +23,20 @@ import qualified Model.JsonTypes.Turn      as JsonTurn
 import           Util                      (errorJson, runSQL)
 import qualified Util
 
+routeTasks :: SqlT.Api ctx
+routeTasks = do
+  get "tasks" getTasksAction
+  get ("tasks" <//> var) $ \(taskId :: SqlT.TaskId) ->
+    runSQL (P.selectFirst [SqlT.TaskId ==. taskId] []) >>= getTaskAction
+  delete ("tasks" <//> var) $ \taskId ->
+    runSQL (P.get taskId) >>= deleteTaskAction taskId
+  post ("tasks" <//> var <//> "finish") $ \taskId ->
+    runSQL (P.selectFirst [SqlT.TurnTaskId ==. taskId] [])
+    >>= finishTaskAction taskId
+  -- TODO implement put "tasks <//> var"
+  post "tasks" $ jsonBody >>= postTasksAction
+
+getTaskInfo :: (JsonTask.Task -> SqlT.ApiAction ctx a) -> Entity SqlT.Task -> SqlT.ApiAction ctx a
 getTaskInfo fun theTask@(Entity taskId _task) = do
   users <- map (\(Entity _ taskUser) -> SqlT.taskUserUserId taskUser)
              <$> runSQL (P.selectList [SqlT.TaskUserTaskId ==. taskId] [])
@@ -95,7 +109,7 @@ postTasksAction (Just task) = do
   _turnId <- runSQL $ insert SqlT.Turn {
         SqlT.turnUserId     = PSql.toSqlKey . fromInteger . Prelude.head $ users
       , SqlT.turnTaskId     = taskId
-      , SqlT.turnStartDate  = realToFrac 1 `addUTCTime` currentTime  -- TODO something smart
+      , SqlT.turnStartDate  = addUTCTime (1800::NominalDiffTime) currentTime  -- TODO something smart
       , SqlT.turnFinishedAt = Nothing
       }
   maybeTask' <- runSQL $ selectFirst [SqlT.TaskId ==. taskId] []
@@ -106,15 +120,3 @@ postTasksAction (Just task) = do
       let location :: T.Text = T.pack $ printf "/tasks/%d" (Util.integerKey taskId :: Integer)
       setHeader "Location" location
       getTaskInfo json theTask
-
-routeTasks = do
-  get "tasks" getTasksAction
-  get ("tasks" <//> var) $ \(taskId :: SqlT.TaskId) ->
-    runSQL (P.selectFirst [SqlT.TaskId ==. taskId] []) >>= getTaskAction
-  delete ("tasks" <//> var) $ \taskId ->
-    runSQL (P.get taskId) >>= deleteTaskAction taskId
-  post ("tasks" <//> var <//> "finish") $ \taskId ->
-    runSQL (P.selectFirst [SqlT.TurnTaskId ==. taskId] [])
-    >>= finishTaskAction taskId
-  -- TODO implement put "tasks <//> var"
-  post "tasks" $ jsonBody >>= postTasksAction

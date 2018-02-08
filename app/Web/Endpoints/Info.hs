@@ -23,4 +23,5 @@ getInfoAction = do
             , name        = serverName
             }
 
+routeInfo :: SqlT.Api ctx
 routeInfo = get "info" getInfoAction

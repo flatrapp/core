@@ -26,6 +26,7 @@ import           Util                         (errorJson, runSQL)
 import qualified Util
 import           Web.Spock
 
+routeUsers :: Cfg.FlatrCfg -> SqlT.Api ctx
 routeUsers cfg = do  -- TODO use cfg from State Monad somehow
   get "users" getUsersAction
   get ("users" <//> var) $ returnUserById . Just
@@ -120,6 +121,11 @@ postUsersAction cfg (Just registration) =
           Util.errorJson Util.BadRequest  -- TODO check what it returns
 
 -- TODO check that user is not there
+registerUser :: JsonRegistration.Registration
+             -> StdGen
+             -> SqlT.Email
+             -> Bool
+             -> SqlT.ApiAction ctx (Maybe (Key SqlT.User))
 registerUser registration gen mail verified = runSQL $ insertUnique user
     where user = SqlT.User
                     { SqlT.userEmail     = mail
