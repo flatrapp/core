@@ -22,41 +22,41 @@ import qualified Util
 import qualified Web.JWT                          as JWT
 import           Web.Spock
 
+postAuthAction :: Maybe LoginCredentials -> ApiAction ctx a
+postAuthAction Nothing = do
+  setStatus badRequest400
+  Util.errorJson Util.InvalidRequest
+postAuthAction (Just loginCredentials) = do
+  maybeUser <- Util.runSQL $ P.selectFirst [UserEmail ==. email loginCredentials] []  -- TODO chain this somehow with the Maybe LoginCredentials
+  case maybeUser of
+    Nothing -> do
+      setStatus forbidden403
+      Util.errorJson Util.CredentialsWrong
+    Just (Entity userId user) -> do
+      let hashedPw = Util.hashPassword (password loginCredentials) (Util.decodeHex . userSalt $ user)
+      if hashedPw /= userPassword user then do
+        setStatus forbidden403
+        Util.errorJson Util.CredentialsWrong
+      else if not $ userVerified user then do
+        setStatus forbidden403
+        Util.errorJson Util.EmailNotVerified
+      else do
+        currentTime <- liftIO getPOSIXTime
+        let validUntil = currentTime + tokenTimeout + tokenGracePeriod
+        tokenId <- Util.makeHex <$> liftIO (getRandomBytes 10)
+        let key = JWT.secret jwtSecret
+        let cs = JWT.def { JWT.exp = JWT.numericDate validUntil
+                         , JWT.jti = JWT.stringOrURI tokenId
+                         , JWT.sub = JWT.stringOrURI $ email loginCredentials
+                         }
+        _newId <- Util.runSQL . insert $ Token userId tokenId $ posixSecondsToUTCTime validUntil
+        json $ object [ "token"    .= JWT.encodeSigned JWT.HS256 key cs
+                      , "tokenId"  .= tokenId
+                      , "validFor" .= tokenTimeout
+                      ]
+
 routeAuth =
-  post "auth" $ do
-    maybeLogin <- jsonBody :: ApiAction ctx (Maybe LoginCredentials)
-    case maybeLogin of
-      Nothing -> do
-        setStatus badRequest400
-        Util.errorJson Util.InvalidRequest
-      Just loginCredentials -> do
-        maybeUser <- Util.runSQL $ P.selectFirst [UserEmail ==. email loginCredentials] []
-        case maybeUser of
-          Nothing -> do
-            setStatus forbidden403
-            Util.errorJson Util.CredentialsWrong
-          Just (Entity userId user) -> do
-            let hashedPw = Util.hashPassword (password loginCredentials) (Util.decodeHex . userSalt $ user)
-            if hashedPw /= userPassword user then do
-              setStatus forbidden403
-              Util.errorJson Util.CredentialsWrong
-            else if not $ userVerified user then do
-              setStatus forbidden403
-              Util.errorJson Util.EmailNotVerified
-            else do
-              currentTime <- liftIO getPOSIXTime
-              let validUntil = currentTime + tokenTimeout + tokenGracePeriod
-              tokenId <- Util.makeHex <$> liftIO (getRandomBytes 10)
-              let key = JWT.secret jwtSecret
-              let cs = JWT.def { JWT.exp = JWT.numericDate validUntil
-                               , JWT.jti = JWT.stringOrURI tokenId
-                               , JWT.sub = JWT.stringOrURI $ email loginCredentials
-                               }
-              _newId <- Util.runSQL . insert $ Token userId tokenId $ posixSecondsToUTCTime validUntil
-              json $ object [ "token"    .= JWT.encodeSigned JWT.HS256 key cs
-                            , "tokenId"  .= tokenId
-                            , "validFor" .= tokenTimeout
-                            ]
+  post "auth" $ jsonBody >>= postAuthAction
 
 tokenTimeout :: Data.Time.Clock.POSIX.POSIXTime
 tokenTimeout = 60 * 60

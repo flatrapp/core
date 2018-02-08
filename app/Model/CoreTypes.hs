@@ -18,10 +18,11 @@ import qualified Web.Spock
 type Api ctx = Web.Spock.SpockCtxM ctx SqlBackend () () ()
 type ApiAction ctx a = Web.Spock.SpockActionCtx ctx SqlBackend () () a
 
+type Email = Text
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 User json
-  email     Text
+  email     Email
   password  Text
   salt      Text
   firstName Text
@@ -58,7 +59,7 @@ Task json
   completionTime Int
 
 Invitation json
-  email Text
+  email Email
   code  Text Maybe
   deriving Show
 

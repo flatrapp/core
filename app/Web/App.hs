@@ -20,8 +20,6 @@ import qualified Database.Persist          as P
 import           Database.Persist.Sql      hiding (delete, get)
 import           Database.Persist.Sqlite   (SqlBackend)
 import           Model.CoreTypes
-import qualified Model.CoreTypes           as SqlT
-import qualified Model.JsonTypes.User      as JsonUser
 import           Network.HTTP.Types.Status
 import qualified Util
 import           Web.Endpoints.Auth
@@ -31,9 +29,6 @@ import           Web.Endpoints.Tasks
 import           Web.Endpoints.Users
 import qualified Web.JWT                   as JWT
 import           Web.Spock
-
-textStringShow :: (Show a) => a -> ActionCtxT ctx (WebStateM SqlBackend () ()) a
-textStringShow = text . pack . show
 
 app :: FlatrCfg -> Api ()
 app cfg =
@@ -45,24 +40,22 @@ app cfg =
     routeInvitations
     (routeUsers cfg)
     prehook authHook $ do
-      get ("users" <//> "current") $ do  -- TODO move to Endpoints/Users.hs
-        (email :: Text) <- fmap findFirst getContext
-        maybeUser <- Util.runSQL $ P.selectFirst [SqlT.UserEmail ==. email] []
-        case JsonUser.jsonUser <$> maybeUser of
-          Nothing -> do
-            setStatus notFound404
-            Util.errorJson Util.UserNotFound  -- shouldn't really happen
-          Just theUser -> json theUser
-      get "secret" $ do
-        (subject :: Text) <- fmap findFirst getContext
-        _ <- textStringShow subject
-        text "Welome!"
-    get "test" $ do
-      currentTime <- liftIO getPOSIXTime
-      text $ pack $ show currentTime <> show (currentTime + tokenTimeout + tokenGracePeriod)
+      get ("users" <//> "current") currentUserAction  -- TODO move to Endpoints/Users.hs
+      get "secret" secretAction
+    get "test" testAction
     -- Allow for pre-flight AJAX requests
     hookAny OPTIONS $ \_ ->
       setHeader "Access-Control-Allow-Headers" "Content-Type, Authorization"
+
+testAction :: ApiAction ctx a
+testAction = do
+  currentTime <- liftIO getPOSIXTime
+  text $ pack $ show currentTime <> show (currentTime + tokenTimeout + tokenGracePeriod)
+
+secretAction :: ListContains n Email xs => ApiAction (HVect xs) a
+secretAction = do
+  (subject :: Text) <- fmap findFirst getContext
+  text $ "Welome!" <> subject
 
 corsHeader :: ActionCtxT a (WebStateM SqlBackend () ()) a
 corsHeader =
@@ -73,6 +66,7 @@ corsHeader =
 initHook :: ApiAction () (HVect '[])
 initHook = return HNil
 
+-- TODO use
 errorHandler :: MonadIO m => Status -> ActionCtxT ctx m b
 errorHandler status
   | status == notFound404 = do
@@ -84,7 +78,7 @@ errorHandler status
         <> " - "
         <> T.decodeUtf8 (statusMessage status)
 
-authHook :: ApiAction (HVect xs) (HVect (Text ': xs))
+authHook :: ApiAction (HVect xs) (HVect (Email ': xs))
 authHook = do
     oldCtx <- getContext
     maybeAuthHeader <- header "Authorization"
