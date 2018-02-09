@@ -105,3 +105,7 @@ maybeTuple (Just a) (Just b) = Just (a, b)
 
 integerKey :: (Num n, ToBackendKey SqlBackend record) => Key record -> n
 integerKey = fromIntegral . fromSqlKey
+
+
+showText :: (Show a) => a -> T.Text
+showText = T.pack . show

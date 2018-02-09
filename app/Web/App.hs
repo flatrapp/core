@@ -9,6 +9,7 @@ module Web.App where
 
 import           Config                    (FlatrCfg)
 import           Control.Monad.IO.Class
+import           Data.Aeson                (object, (.=))
 import           Data.HVect                hiding (pack)
 import           Data.Monoid               ((<>))
 import           Data.Text                 (Text, pack)
@@ -66,17 +67,18 @@ corsHeader =
 initHook :: ApiAction () (HVect '[])
 initHook = return HNil
 
--- TODO use
 errorHandler :: MonadIO m => Status -> ActionCtxT ctx m b
 errorHandler status
   | status == notFound404 = do
     setStatus notFound404
     Util.errorJson Util.NotFound
-  | otherwise             = do
+  | otherwise = do
     setStatus status
-    text $ (T.pack . show $ statusCode status)
-        <> " - "
-        <> T.decodeUtf8 (statusMessage status)
+    json $ object [ "error" .= object [
+                      "code" .= show status,
+                      "message" .= T.decodeUtf8 (statusMessage status)
+                    ]
+                  ]
 
 authHook :: ApiAction (HVect xs) (HVect (Email ': xs))
 authHook = do
@@ -99,8 +101,7 @@ authHook = do
             case maybeTokenId `Util.maybeTuple` maybeSubject of
               Nothing -> Util.errorJson Util.TokenInvalid
               Just (tokenId, subject) -> do
-                let tokenIdText = pack . show $ tokenId -- TODO make typesafe with signature
-                maybeT <- Util.runSQL $ P.selectFirst [TokenTokenId ==. tokenIdText] []
+                maybeT <- Util.runSQL $ P.selectFirst [TokenTokenId ==. Util.showText tokenId] []
                 case maybeT of
                   Nothing -> do
                     setStatus unauthorized401
