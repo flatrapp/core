@@ -44,6 +44,9 @@ postAuthAction (Just loginCredentials) = do
       else if not $ SqlT.userVerified user then do
         setStatus forbidden403
         Util.errorJson Util.EmailNotVerified
+      else if SqlT.userDisabled user then do
+        setStatus forbidden403
+        Util.errorJson Util.UserDisabled
       else do
         currentTime <- liftIO getPOSIXTime
         let validUntil = currentTime + tokenTimeout + tokenGracePeriod

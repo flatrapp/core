@@ -65,6 +65,7 @@ data JsonError
   | NotInvited
   | UserEmailExists
   | InvitationEmailExists
+  | UserDisabled
   deriving (Show)
 
 
@@ -96,6 +97,7 @@ errorJson err =
     conv' NotInvited            = ("not_invited", "Your email address is not invited.")
     conv' UserEmailExists       = ("user_email_exists", "A user with this email address already exists.")
     conv' InvitationEmailExists = ("invitation_email_exists", "An invitation with this email address already exists.")
+    conv' UserDisabled          = ("user_disabled", "This user is disabled and has to be enabled before being able to log in.")
 
 maybeToEither :: a -> Maybe b -> Either a b
 maybeToEither = flip maybe Right . Left

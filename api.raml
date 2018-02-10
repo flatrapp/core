@@ -55,7 +55,23 @@ types:
       error:
         type: object
         properties:
-          code: string
+          code:
+            type: string
+            examples:
+              - "invalid_request"
+              - "credentials_wrong"
+              - "unauthorized"
+              - "user_not_found"
+              - "task_not_found"
+              - "bad_request"
+              - "token_invalid"
+              - "not_found"
+              - "email_not_verified"
+              - "invitation_code_invalid"
+              - "not_invited
+              - "user_email_exists"
+              - "invitation_email_exists"
+              - "user_disabled"
           message: string
   Turn:
     type: object
