@@ -43,10 +43,13 @@ getTaskInfo fun theTask@(Entity taskId _task) = do
   turns <- map JsonTurn.jsonTurn
              <$> runSQL (P.selectList [SqlT.TurnTaskId ==. taskId, SqlT.TurnFinishedAt ==. Nothing] [Asc SqlT.TurnStartDate])
   currentTime <- liftIO getCurrentTime
-  let splitTurns = if currentTime > JsonTurn.startDate (head turns)  then
-                     (Just $ head turns, tail turns) -- TODO deal with empty turns
-                   else
-                     (Nothing, turns)
+  let splitTurns = case turns of
+                     [] -> (Nothing, [])
+                     (nextTurn:otherTurns) ->
+                       if currentTime > JsonTurn.startDate nextTurn  then
+                         (Just nextTurn, otherTurns)
+                       else
+                         (Nothing, otherTurns)
   fun $ JsonTask.jsonTask users splitTurns theTask
 
 getTasksAction :: SqlT.ApiAction ctx a
