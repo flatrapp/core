@@ -69,9 +69,6 @@ postUsersAction cfg (Just registration) =
         Nothing ->
           errorJson Util.InvitationCodeInvalid  -- code not in DB
         Just (Entity invitationId theInvitation) -> do
-          runSQL $ P.updateWhere [SqlT.InvitationId ==. invitationId] []
-          setStatus created201
-          gen <- liftIO getStdGen
           let email = SqlT.invitationEmail theInvitation
           -- check if user exists
           maybeUser <- runSQL $ P.selectFirst [SqlT.UserEmail ==. email] []
@@ -79,6 +76,10 @@ postUsersAction cfg (Just registration) =
             Just _user ->
               Util.errorJson Util.UserEmailExists
             Nothing -> do
+              -- remove Invitation after it has been used
+              runSQL $ P.delete invitationId
+              setStatus created201
+              gen <- liftIO getStdGen
               newId <- registerUser registration gen email True
               returnUserById newId
     Nothing -> do
