@@ -37,9 +37,8 @@ deleteInvitationAction _ Nothing = do
   setStatus notFound404
   errorJson Util.NotFound
 deleteInvitationAction invitationId (Just _theInvitation) = do
-  setStatus noContent204
   runSQL $ P.delete invitationId
-  text ""  -- TODO check if I can send empty response
+  Util.emptyResponse
 
 postInvitationAction :: Maybe JsonInvitation.Invitation -> SqlT.ApiAction ctx a
 postInvitationAction Nothing = do

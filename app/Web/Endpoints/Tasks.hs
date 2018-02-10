@@ -66,8 +66,7 @@ deleteTaskAction _ Nothing = do
   errorJson Util.TaskNotFound
 deleteTaskAction taskId (Just _task) = do
   runSQL $ P.delete taskId
-  setStatus noContent204
-  text ""  -- TODO check if empty response is possible
+  Util.emptyResponse
 
 finishTaskAction :: SqlT.TaskId -> Maybe (Entity SqlT.Turn) -> SqlT.ApiAction ctx a
 finishTaskAction _ Nothing = do
@@ -81,8 +80,7 @@ finishTaskAction taskId (Just _turn) = do
     , SqlT.TurnStartDate <. currentTime
     ]
     [SqlT.TurnFinishedAt =. Just currentTime]
-  setStatus noContent204
-  text ""  -- TODO check if empty response is possible
+  Util.emptyResponse
 
 postTasksAction :: Maybe JsonTask.Task -> SqlT.ApiAction ctx a
 postTasksAction Nothing = do

@@ -8,16 +8,18 @@ module Util where
 
 import           Control.Arrow
 import           Control.Monad.IO.Class
-import           Control.Monad.Logger    (LoggingT, runStdoutLoggingT)
-import qualified Crypto.Hash.SHA512      as SHA
-import           Data.Aeson              hiding (json)
-import qualified Data.ByteString         as BS
-import qualified Data.ByteString.Base16  as B16
-import qualified Data.Text               as T
-import qualified Data.Text.Encoding      as E
+import           Control.Monad.Logger      (LoggingT, runStdoutLoggingT)
+import qualified Crypto.Hash.SHA512        as SHA
+import           Data.Aeson                hiding (json)
+import qualified Data.ByteString           as BS
+import qualified Data.ByteString.Base16    as B16
+import qualified Data.Text                 as T
+import qualified Data.Text.Encoding        as E
 import qualified Data.Word8
 import           Database.Persist.Sqlite
-import           Prelude                 hiding (length)
+import qualified Model.CoreTypes            as SqlT
+import           Network.HTTP.Types.Status
+import           Prelude                   hiding (length)
 import           System.Random
 import           Web.Spock
 
@@ -109,3 +111,8 @@ integerKey = fromIntegral . fromSqlKey
 
 showText :: (Show a) => a -> T.Text
 showText = T.pack . show
+
+emptyResponse :: SqlT.ApiAction ctx a
+emptyResponse = do
+  setStatus noContent204
+  bytes BS.empty

@@ -58,8 +58,7 @@ deleteUserAction _ Nothing = do
   errorJson Util.UserNotFound
 deleteUserAction userId (Just _user) = do
   runSQL $ P.delete userId
-  setStatus noContent204
-  text ""  -- TODO check if empty body is possible
+  Util.emptyResponse
 
 postUsersAction :: Cfg.FlatrCfg -> Maybe JsonRegistration.Registration -> SqlT.ApiAction ctx a
 postUsersAction _ Nothing = do
@@ -118,7 +117,7 @@ postUsersAction cfg (Just registration) =
         Nothing -> do
           -- User should provide at least code or email
           setStatus badRequest400
-          Util.errorJson Util.BadRequest  -- TODO check what it returns
+          Util.errorJson Util.BadRequest
 
 -- TODO check that user is not there
 registerUser :: JsonRegistration.Registration
