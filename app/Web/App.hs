@@ -21,7 +21,7 @@ import qualified Database.Persist          as P
 import           Database.Persist.Sql      hiding (delete, get)
 import           Database.Persist.Sqlite   (SqlBackend)
 import           Model.CoreTypes
-import           Network.HTTP.Types.Status
+import           Network.HTTP.Types.Status (Status, notFound404, statusMessage)
 import qualified Util
 import           Web.Endpoints.Auth
 import           Web.Endpoints.Info
@@ -69,8 +69,7 @@ initHook = return HNil
 
 errorHandler :: MonadIO m => Status -> ActionCtxT ctx m b
 errorHandler status
-  | status == notFound404 = do
-    setStatus notFound404
+  | status == notFound404 =
     Util.errorJson Util.NotFound
   | otherwise = do
     setStatus status
@@ -85,13 +84,11 @@ authHook = do
     oldCtx <- getContext
     maybeAuthHeader <- header "Authorization"
     case maybeAuthHeader of
-      Nothing -> do
-        setStatus unauthorized401
+      Nothing ->
         Util.errorJson Util.Unauthorized
       Just authHeader ->
         case T.stripPrefix "Bearer " authHeader of
           Nothing -> do
-            setStatus unauthorized401
             Util.errorJson Util.Unauthorized
           Just bearerToken -> do
             let maybeClaims = JWT.claims <$>
@@ -104,13 +101,11 @@ authHook = do
                 maybeT <- Util.runSQL $ P.selectFirst [TokenTokenId ==. Util.showText tokenId] []
                 case maybeT of
                   Nothing -> do
-                    setStatus unauthorized401
                     Util.errorJson Util.Unauthorized
                   Just (Entity _tokenId token) -> do
                     currentTime <- liftIO getCurrentTime
                     if tokenValidUntil token < currentTime then do
                       let _ = token :: Token
-                      setStatus unauthorized401
                       Util.errorJson Util.Unauthorized
                     else
                       return $ (pack . show $ subject) :&: oldCtx

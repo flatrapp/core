@@ -20,7 +20,7 @@ import qualified Database.Persist             as P
 import qualified Model.CoreTypes              as SqlT
 import qualified Model.JsonTypes.Registration as JsonRegistration
 import qualified Model.JsonTypes.User         as JsonUser
-import           Network.HTTP.Types.Status
+import           Network.HTTP.Types.Status    (created201)
 import           System.Random
 import           Util                         (errorJson, runSQL)
 import qualified Util
@@ -37,15 +37,13 @@ routeUsers cfg = do  -- TODO use cfg from State Monad somehow
     jsonBody >>= postUsersAction cfg  -- TODO use the Nothing case as intermediate action and chain it in somehow
 
 returnUserById :: Maybe (Key SqlT.User) -> SqlT.ApiAction ctx m
-returnUserById Nothing = do
+returnUserById Nothing =
   -- TODO combine with registration... because this function is also called once when there is no registration happening
-  setStatus conflict409
   Util.errorJson Util.UserEmailExists
 returnUserById (Just userId ) = do
   maybeUser <- runSQL $ P.selectFirst [SqlT.UserId ==. userId] []
   fromMaybe
-    (do setStatus notFound404
-        errorJson Util.UserNotFound)
+    (errorJson Util.UserNotFound)
     (json . JsonUser.jsonUser <$> maybeUser)
 
 getUsersAction :: SqlT.ApiAction ctx a
@@ -54,15 +52,13 @@ getUsersAction =
 
 deleteUserAction :: SqlT.UserId -> Maybe SqlT.User -> SqlT.ApiAction ctx a
 deleteUserAction _ Nothing = do
-  setStatus notFound404
   errorJson Util.UserNotFound
 deleteUserAction userId (Just _user) = do
   runSQL $ P.delete userId
   Util.emptyResponse
 
 postUsersAction :: Cfg.FlatrCfg -> Maybe JsonRegistration.Registration -> SqlT.ApiAction ctx a
-postUsersAction _ Nothing = do
-  setStatus badRequest400
+postUsersAction _ Nothing =
   errorJson Util.BadRequest
 postUsersAction cfg (Just registration) =
   case JsonRegistration.invitationCode registration of
@@ -70,8 +66,7 @@ postUsersAction cfg (Just registration) =
       maybeInvitation <- runSQL $ P.selectFirst
         [SqlT.InvitationCode ==. Just code] []
       case maybeInvitation of
-        Nothing -> do
-          setStatus notFound404
+        Nothing ->
           errorJson Util.InvitationCodeInvalid  -- code not in DB
         Just (Entity invitationId theInvitation) -> do
           runSQL $ P.updateWhere [SqlT.InvitationId ==. invitationId] []
@@ -81,8 +76,7 @@ postUsersAction cfg (Just registration) =
           -- check if user exists
           maybeUser <- runSQL $ P.selectFirst [SqlT.UserEmail ==. email] []
           case maybeUser of
-            Just _user -> do
-              setStatus conflict409
+            Just _user ->
               Util.errorJson Util.UserEmailExists
             Nothing -> do
               newId <- registerUser registration gen email True
@@ -102,21 +96,18 @@ postUsersAction cfg (Just registration) =
                 -- check if user exists
                 maybeUser <- runSQL $ P.selectFirst [SqlT.UserEmail ==. email] []
                 case maybeUser of
-                  Just _user -> do
-                    setStatus conflict409
+                  Just _user ->
                     Util.errorJson Util.UserEmailExists
                   Nothing ->
                     -- TODO send verification Email if smtp config set
                     -- $frontedUrl/#signup?code=$code&serverUrl=$serverUrl
                     registerUser registration gen email False
                       >>= returnUserById
-              Nothing -> do
+              Nothing ->
                 -- User provided only email but is not invited
-                setStatus unauthorized401
                 Util.errorJson Util.NotInvited
-        Nothing -> do
+        Nothing ->
           -- User should provide at least code or email
-          setStatus badRequest400
           Util.errorJson Util.BadRequest
 
 -- TODO check that user is not there
@@ -146,7 +137,5 @@ currentUserAction = do
   (email :: Text) <- fmap findFirst getContext
   maybeUser <- Util.runSQL $ P.selectFirst [SqlT.UserEmail ==. email] []
   case JsonUser.jsonUser <$> maybeUser of
-    Nothing -> do
-      setStatus notFound404
-      Util.errorJson Util.UserNotFound  -- shouldn't really happen
+    Nothing -> Util.errorJson Util.UserNotFound  -- shouldn't really happen
     Just theUser -> json theUser

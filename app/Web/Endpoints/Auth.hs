@@ -17,7 +17,6 @@ import qualified Database.Persist                 as P
 import           Database.Persist.Sql             hiding (delete, get)
 import qualified Model.CoreTypes                  as SqlT
 import           Model.JsonTypes.LoginCredentials
-import           Network.HTTP.Types.Status
 import qualified Util
 import qualified Web.JWT                          as JWT
 import           Web.Spock
@@ -27,25 +26,19 @@ routeAuth =
   post "auth" $ jsonBody >>= postAuthAction
 
 postAuthAction :: Maybe LoginCredentials -> SqlT.ApiAction ctx a
-postAuthAction Nothing = do
-  setStatus badRequest400
-  Util.errorJson Util.InvalidRequest
+postAuthAction Nothing = Util.errorJson Util.BadRequest
 postAuthAction (Just loginCredentials) = do
   maybeUser <- Util.runSQL $ P.selectFirst [SqlT.UserEmail ==. email loginCredentials] []  -- TODO chain this somehow with the Maybe LoginCredentials
   case maybeUser of
-    Nothing -> do
-      setStatus forbidden403
+    Nothing ->
       Util.errorJson Util.CredentialsWrong
     Just (Entity userId user) -> do
       let hashedPw = Util.hashPassword (password loginCredentials) (Util.decodeHex . SqlT.userSalt $ user)
-      if hashedPw /= SqlT.userPassword user then do
-        setStatus forbidden403
+      if hashedPw /= SqlT.userPassword user then
         Util.errorJson Util.CredentialsWrong
-      else if not $ SqlT.userVerified user then do
-        setStatus forbidden403
+      else if not $ SqlT.userVerified user then
         Util.errorJson Util.EmailNotVerified
-      else if SqlT.userDisabled user then do
-        setStatus forbidden403
+      else if SqlT.userDisabled user then
         Util.errorJson Util.UserDisabled
       else do
         currentTime <- liftIO getPOSIXTime

@@ -12,7 +12,7 @@ import           Crypto.Random
 import qualified Data.Text                  as T
 import           Database.Persist           hiding (delete, get)
 import qualified Database.Persist           as P
-import           Network.HTTP.Types.Status
+import           Network.HTTP.Types.Status  (created201)
 import           Text.Printf
 import           Web.Spock
 import qualified Model.CoreTypes            as SqlT
@@ -33,16 +33,14 @@ getInvitationAction = do
   json $ map JsonInvitation.jsonInvitation allInvitations
 
 deleteInvitationAction :: SqlT.InvitationId -> Maybe SqlT.Invitation -> SqlT.ApiAction ctx a
-deleteInvitationAction _ Nothing = do
-  setStatus notFound404
+deleteInvitationAction _ Nothing =
   errorJson Util.NotFound
 deleteInvitationAction invitationId (Just _theInvitation) = do
   runSQL $ P.delete invitationId
   Util.emptyResponse
 
 postInvitationAction :: Maybe JsonInvitation.Invitation -> SqlT.ApiAction ctx a
-postInvitationAction Nothing = do
-  setStatus badRequest400
+postInvitationAction Nothing =
   errorJson Util.BadRequest
 postInvitationAction (Just invitation) = do
   invitationCode <- Util.makeHex <$> liftIO (getRandomBytes 10)
@@ -51,8 +49,7 @@ postInvitationAction (Just invitation) = do
                     , SqlT.invitationCode  = Just invitationCode
                     }
   case maybeInvitationId of
-    Nothing -> do
-      setStatus conflict409
+    Nothing ->
       errorJson Util.InvitationEmailExists
     Just invitationId -> do
       maybeInvitation' <- runSQL $ selectFirst [SqlT.InvitationId ==. invitationId] []

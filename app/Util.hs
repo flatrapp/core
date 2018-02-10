@@ -17,7 +17,7 @@ import qualified Data.Text                 as T
 import qualified Data.Text.Encoding        as E
 import qualified Data.Word8
 import           Database.Persist.Sqlite
-import qualified Model.CoreTypes            as SqlT
+import qualified Model.CoreTypes           as SqlT
 import           Network.HTTP.Types.Status
 import           Prelude                   hiding (length)
 import           System.Random
@@ -52,8 +52,7 @@ runSQL
 runSQL action = runQuery $ \conn -> runStdoutLoggingT $ runSqlConn action conn
 
 data JsonError
-  = InvalidRequest
-  | CredentialsWrong
+  = CredentialsWrong
   | Unauthorized
   | UserNotFound
   | TaskNotFound
@@ -71,33 +70,33 @@ data JsonError
 
 errorJson :: Control.Monad.IO.Class.MonadIO m =>
              JsonError -> ActionCtxT ctx m b
-errorJson err =
+errorJson err = do
+  setStatus status
   json $
     object
     [ "error" .= object [
-        "code" .= fst (conv err),
-        "message" .= snd (conv err)
+        "code" .= code,
+        "message" .= msg
       ]
     ]
   where
-    conv :: JsonError -> (T.Text, T.Text)
-    conv x = (T.pack *** T.pack) (conv' x)
+    (code, msg) = (T.pack *** T.pack) strs
+    (status, strs) = (conv' err)
 
-    conv' :: JsonError -> (String, String)
-    conv' InvalidRequest        = ("invalid_request", "Invalid request.")
-    conv' CredentialsWrong      = ("credentials_wrong", "User does not exist or password is wrong.")
-    conv' Unauthorized          = ("unauthorized", "Unauthorized.")
-    conv' UserNotFound          = ("user_not_found", "No user exists with this ID.")
-    conv' TaskNotFound          = ("task_not_found", "No task exists with this ID.")
-    conv' BadRequest            = ("bad_request", "Bad request. Not understood.")
-    conv' TokenInvalid          = ("token_invalid", "The token is invalid, you should authorize yourself again.")
-    conv' NotFound              = ("not_found", "There's nothing here.")
-    conv' EmailNotVerified      = ("email_not_verified", "You have not verified your email address yet.")
-    conv' InvitationCodeInvalid = ("invitation_code_invalid", "This is not a valid invitation code.")
-    conv' NotInvited            = ("not_invited", "Your email address is not invited.")
-    conv' UserEmailExists       = ("user_email_exists", "A user with this email address already exists.")
-    conv' InvitationEmailExists = ("invitation_email_exists", "An invitation with this email address already exists.")
-    conv' UserDisabled          = ("user_disabled", "This user is disabled and has to be enabled before being able to log in.")
+    conv' :: JsonError -> (Status, (String, String))
+    conv' CredentialsWrong      = (forbidden403,    ("credentials_wrong", "User does not exist or password is wrong."))
+    conv' Unauthorized          = (unauthorized401, ("unauthorized", "Unauthorized."))
+    conv' UserNotFound          = (notFound404,     ("user_not_found", "No user exists with this ID."))
+    conv' TaskNotFound          = (notFound404,     ("task_not_found", "No task exists with this ID."))
+    conv' BadRequest            = (badRequest400,   ("bad_request", "Bad request. Not understood."))
+    conv' TokenInvalid          = (status200,       ("token_invalid", "The token is invalid, you should authorize yourself again."))
+    conv' NotFound              = (notFound404,     ("not_found", "There's nothing here."))
+    conv' EmailNotVerified      = (forbidden403,    ("email_not_verified", "You have not verified your email address yet."))
+    conv' InvitationCodeInvalid = (forbidden403,    ("invitation_code_invalid", "This is not a valid invitation code."))
+    conv' NotInvited            = (unauthorized401, ("not_invited", "Your email address is not invited."))
+    conv' UserEmailExists       = (conflict409,     ("user_email_exists", "A user with this email address already exists."))
+    conv' InvitationEmailExists = (conflict409,     ("invitation_email_exists", "An invitation with this email address already exists."))
+    conv' UserDisabled          = (forbidden403,    ("user_disabled", "This user is disabled and has to be enabled before being able to log in."))
 
 maybeToEither :: a -> Maybe b -> Either a b
 maybeToEither = flip maybe Right . Left

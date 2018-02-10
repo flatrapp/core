@@ -13,7 +13,7 @@ import           Data.Time.Clock
 import           Database.Persist          hiding (delete, get)
 import qualified Database.Persist          as P
 import qualified Database.Persist.Sql      as PSql
-import           Network.HTTP.Types.Status
+import           Network.HTTP.Types.Status (created201)
 import           Text.Printf
 import           Web.Spock                 hiding (head)
 
@@ -54,23 +54,20 @@ getTasksAction =
   json =<< mapM (getTaskInfo return) =<< runSQL (selectList [] [Asc SqlT.TaskId])
 
 getTaskAction :: Maybe (Entity SqlT.Task) -> SqlT.ApiAction ctx a
-getTaskAction Nothing = do
-  setStatus notFound404
+getTaskAction Nothing =
   errorJson Util.TaskNotFound
 getTaskAction (Just task) =
   getTaskInfo json task
 
 deleteTaskAction :: SqlT.TaskId -> Maybe SqlT.Task -> SqlT.ApiAction ctx a
-deleteTaskAction _ Nothing = do
-  setStatus notFound404
+deleteTaskAction _ Nothing =
   errorJson Util.TaskNotFound
 deleteTaskAction taskId (Just _task) = do
   runSQL $ P.delete taskId
   Util.emptyResponse
 
 finishTaskAction :: SqlT.TaskId -> Maybe (Entity SqlT.Turn) -> SqlT.ApiAction ctx a
-finishTaskAction _ Nothing = do
-  setStatus notFound404
+finishTaskAction _ Nothing =
   errorJson Util.TaskNotFound
 finishTaskAction taskId (Just _turn) = do
   currentTime <- liftIO getCurrentTime
@@ -83,8 +80,7 @@ finishTaskAction taskId (Just _turn) = do
   Util.emptyResponse
 
 postTasksAction :: Maybe JsonTask.Task -> SqlT.ApiAction ctx a
-postTasksAction Nothing = do
-  setStatus badRequest400
+postTasksAction Nothing =
   errorJson Util.BadRequest
 postTasksAction (Just task) = do
   -- post actual Task
