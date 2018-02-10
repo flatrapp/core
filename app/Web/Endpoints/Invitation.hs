@@ -9,7 +9,6 @@ module Web.Endpoints.Invitation where
 
 import           Control.Monad.IO.Class
 import           Crypto.Random
-import           Data.Maybe                 (fromMaybe)
 import qualified Data.Text                  as T
 import           Database.Persist           hiding (delete, get)
 import qualified Database.Persist           as P
@@ -26,8 +25,7 @@ routeInvitations = do
   get "invitations" getInvitationAction
   delete ("invitations" <//> var) $ \invitationId ->
     runSQL (P.get invitationId) >>= deleteInvitationAction invitationId
-  patch ("invitations" <//> var) $ \invitationId ->
-    jsonBody >>= patchInvitationAction invitationId
+  patch ("invitations" <//> var) resendInvitation
   post "invitations" (jsonBody >>= postInvitationAction)
 
 getInvitationAction :: SqlT.ApiAction ctx a
@@ -42,22 +40,14 @@ deleteInvitationAction invitationId (Just _theInvitation) = do
   runSQL $ P.delete invitationId
   Util.emptyResponse
 
-patchInvitationAction :: SqlT.InvitationId -> Maybe JsonInvitation.Invitation -> SqlT.ApiAction ctx a
-patchInvitationAction _ Nothing =
-  errorJson Util.BadRequest
-patchInvitationAction invitationId (Just invitation) = do
-    maybeInvitation <- runSQL $ P.get invitationId
-    case maybeInvitation of
-      Nothing -> errorJson Util.NotFound
-      (Just _invitation) -> do
-          runSQL $ P.updateWhere
-              [SqlT.InvitationId ==. invitationId]
-              [SqlT.InvitationEmail =. JsonInvitation.email invitation]
-          newI <- runSQL $ P.selectFirst [SqlT.InvitationId ==. invitationId] []
-          -- TODO resend invitation mail
-          fromMaybe
-             (error "I fucked up #3")
-             (json . JsonInvitation.jsonInvitation <$> newI)
+resendInvitation :: SqlT.InvitationId -> SqlT.ApiAction ctx a
+resendInvitation invitationId  = do
+  mInvitation <- runSQL $ P.selectFirst [SqlT.InvitationId ==. invitationId] []
+  case mInvitation of
+    Nothing -> errorJson Util.NotFound
+    Just invitation -> do
+      -- TODO resend invitation mail
+     json . JsonInvitation.jsonInvitation $ invitation
 
 postInvitationAction :: Maybe JsonInvitation.Invitation -> SqlT.ApiAction ctx a
 postInvitationAction Nothing =
