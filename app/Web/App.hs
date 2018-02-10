@@ -45,8 +45,9 @@ app cfg =
       get "secret" secretAction
     get "test" testAction
     -- Allow for pre-flight AJAX requests
-    hookAny OPTIONS $ \_ ->
+    hookAny OPTIONS $ \_ -> do
       setHeader "Access-Control-Allow-Headers" "Content-Type, Authorization"
+      setHeader "Access-Control-Allow-Methods" "OPTIONS, GET, POST, PUT, PATCH, DELETE"
 
 testAction :: ApiAction ctx a
 testAction = do
