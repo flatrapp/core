@@ -16,6 +16,8 @@ data User =
          , firstName     :: Text
          , lastName      :: Text
          , emailVerified :: Bool
+         , disabled      :: Bool
+         , absent        :: Bool
          } deriving (Show, Generic)
 
 instance ToJSON User
@@ -27,4 +29,6 @@ jsonUser (Entity userId user) =
          , firstName     = SqlT.userFirstName user
          , lastName      = SqlT.userLastName user
          , emailVerified = SqlT.userVerified user
+         , disabled      = SqlT.userDisabled user
+         , absent        = SqlT.userAbsent user
          }

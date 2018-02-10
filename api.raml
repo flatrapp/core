@@ -21,6 +21,8 @@ types:
       firstName: string
       lastName: string
       email_verified: boolean
+      disabled: boolean
+      absent: boolean
   Registration:
     type: object
     properties:
@@ -32,6 +34,7 @@ types:
         type: string
         minLength: 16
         maxLength: 16
+      absent: boolean
   LoginCredentials:
     type: object
     properties:
@@ -392,8 +395,12 @@ types:
           example: |
             [{
               "id": 1,
+              "email": "ds@example.org",
               "firstName": "Daniel",
-              "lastName": "Schäfer"
+              "lastName": "Schäfer",
+              "emailVerified": true,
+              "disabled": false,
+              "absent": false
             }]
   post:
     description: Register a new user
@@ -406,6 +413,7 @@ types:
             "lastName": "Schäfer",
             "password": "pa$$w0rd",
             "invitation_code": "9d0d1e5f8dbe5dc01392",
+            "absent": false
           }
         with_email: |
           {
@@ -413,6 +421,7 @@ types:
             "lastName": "Schäfer",
             "password": "pa$$w0rd",
             "email": "foo@example.org",
+            "absent": false
           }
     responses:
       200:

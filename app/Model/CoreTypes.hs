@@ -28,6 +28,8 @@ User json
   firstName Text
   lastName  Text
   verified  Bool
+  disabled  Bool
+  absent  Bool
 
   UniqueUserEmail email
 

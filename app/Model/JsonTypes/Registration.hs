@@ -12,6 +12,7 @@ data Registration =
                  , lastName       :: Text
                  , password       :: Text
                  , invitationCode :: Maybe Text
+                 , absent         :: Bool
                  } deriving (Show, Generic)
 
 instance FromJSON Registration

@@ -133,6 +133,8 @@ registerUser registration gen mail verified = runSQL $ insertUnique user
                     , SqlT.userFirstName = JsonRegistration.firstName registration
                     , SqlT.userLastName  = JsonRegistration.lastName registration
                     , SqlT.userVerified  = verified
+                    , SqlT.userDisabled  = False
+                    , SqlT.userAbsent    = JsonRegistration.absent registration
                     }
           pw = JsonRegistration.password registration
           salt' = Util.randomBS 512 gen
