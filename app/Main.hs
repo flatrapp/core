@@ -9,11 +9,29 @@ import qualified Config
 import           Control.Monad.Logger    (runStdoutLoggingT)
 import           Database.Persist.Sqlite hiding (delete, get)
 import           Model.CoreTypes
+import           System.Environment
 import           Web.App
 
+
 main :: IO ()
-main = do
-  cfg <- Config.parseConfig "flatrapp.cfg"
+main = getArgs >>= parseArgs
+
+parseArgs :: [String] -> IO ()
+parseArgs args
+  | [] <- args = runApp "flatrapp.cfg"
+  | "-h" `elem` args || "--help" `elem` args = do
+      progName <- getProgName
+      putStrLn $ "Usage: " ++ progName ++ " [flatrapp.cfg]"
+      putStrLn $ "       " ++ progName ++ " [-h]"
+  | [cfg] <- args = runApp cfg
+  | otherwise = do
+      putStrLn "Incorrect usage"
+      putStrLn ""
+      parseArgs ["-h"]
+
+runApp :: FilePath -> IO ()
+runApp cfgFile = do
+  cfg <- Config.parseConfig cfgFile
   pool <- runStdoutLoggingT $ createSqlitePool (Config.db cfg) 5
   spockCfg <- mySpockCfg () (PCPool pool) ()
   runStdoutLoggingT $ runSqlPool (runMigration migrateAll) pool
