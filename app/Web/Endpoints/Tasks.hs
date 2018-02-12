@@ -26,14 +26,15 @@ import qualified Util
 routeTasks :: SqlT.Api ctx
 routeTasks = do
   get "tasks" getTasksAction
-  get ("tasks" <//> var) $ \(taskId :: SqlT.TaskId) ->
+  get ("tasks" <//> var) $ \taskId ->
     runSQL (P.selectFirst [SqlT.TaskId ==. taskId] []) >>= getTaskAction
   delete ("tasks" <//> var) $ \taskId ->
     runSQL (P.get taskId) >>= deleteTaskAction taskId
   post ("tasks" <//> var <//> "finish") $ \taskId ->
     runSQL (P.selectFirst [SqlT.TurnTaskId ==. taskId] [])
     >>= finishTaskAction taskId
-  -- TODO implement put "tasks <//> var"
+  put ("tasks" <//> var) $ \taskId ->
+    runSQL (P.get taskId) >>= putTaskAction taskId
   post "tasks" $ jsonBody >>= postTasksAction
 
 getTaskInfo :: (JsonTask.Task -> SqlT.ApiAction ctx a) -> Entity SqlT.Task -> SqlT.ApiAction ctx a
@@ -81,6 +82,31 @@ finishTaskAction taskId (Just _turn) = do
     ]
     [SqlT.TurnFinishedAt =. Just currentTime]
   Util.emptyResponse
+
+putTaskAction :: SqlT.TaskId -> Maybe SqlT.Task -> SqlT.ApiAction ctx a
+putTaskAction _ Nothing =
+  errorJson Util.TaskNotFound
+-- TODO combine with postTaskAction
+-- TODO maybe to JsonTask.Task with argument pattern matching as well
+putTaskAction taskId (Just _task) = do
+  maybeJsonTask <- jsonBody
+  case maybeJsonTask of
+    Nothing -> errorJson Util.BadRequest
+    Just task -> do
+      runSQL $ P.replace taskId SqlT.Task {
+            SqlT.taskTitle          = JsonTask.title task
+          , SqlT.taskDescription    = JsonTask.description task
+          , SqlT.taskFrequency      = JsonTask.frequency task
+          , SqlT.taskCompletionTime = JsonTask.completionTime task  -- TODO assert than cannot be negative
+          }
+      maybeTask <- runSQL $ selectFirst [SqlT.TaskId ==. taskId] []
+      case maybeTask of
+        Nothing -> error "I fucked up #1"
+        Just newTask -> do
+          setStatus created201
+          let location :: T.Text = T.pack $ printf "/tasks/%d" (Util.integerKey taskId :: Integer)
+          setHeader "Location" location
+          getTaskInfo json newTask
 
 postTasksAction :: Maybe JsonTask.Task -> SqlT.ApiAction ctx a
 postTasksAction Nothing =

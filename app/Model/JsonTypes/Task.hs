@@ -19,7 +19,7 @@ data Task =
          , completionTime :: Int
          , users          :: [Integer]
          , currentTurn    :: Maybe Turn
-         , upcomingTurns  :: [Turn]
+         , upcomingTurns  :: Maybe [Turn]
          } deriving (Show, Generic)
 
 instance ToJSON Task
@@ -35,5 +35,5 @@ jsonTask users' (currentTurn', upcomingTurns') (Entity taskId task) =
          , completionTime = SqlT.taskCompletionTime task
          , users          = map Util.integerKey users'
          , currentTurn    = currentTurn'
-         , upcomingTurns  = upcomingTurns'
+         , upcomingTurns  = Just upcomingTurns'
          }
