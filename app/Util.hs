@@ -54,8 +54,6 @@ runSQL action = runQuery $ \conn -> runStdoutLoggingT $ runSqlConn action conn
 data JsonError
   = CredentialsWrong
   | Unauthorized
-  | UserNotFound
-  | TaskNotFound
   | BadRequest
   | TokenInvalid
   | NotFound
@@ -86,11 +84,9 @@ errorJson err = do
     conv' :: JsonError -> (Status, (String, String))
     conv' CredentialsWrong      = (forbidden403,    ("credentials_wrong", "User does not exist or password is wrong."))
     conv' Unauthorized          = (unauthorized401, ("unauthorized", "Unauthorized."))
-    conv' UserNotFound          = (notFound404,     ("user_not_found", "No user exists with this ID."))
-    conv' TaskNotFound          = (notFound404,     ("task_not_found", "No task exists with this ID."))
     conv' BadRequest            = (badRequest400,   ("bad_request", "Bad request. Not understood."))
     conv' TokenInvalid          = (status200,       ("token_invalid", "The token is invalid, you should authorize yourself again."))
-    conv' NotFound              = (notFound404,     ("not_found", "There's nothing here."))
+    conv' NotFound              = (notFound404,     ("not_found", "The requested resource could not be found."))
     conv' EmailNotVerified      = (forbidden403,    ("email_not_verified", "You have not verified your email address yet."))
     conv' InvitationCodeInvalid = (forbidden403,    ("invitation_code_invalid", "This is not a valid invitation code."))
     conv' NotInvited            = (unauthorized401, ("not_invited", "Your email address is not invited."))

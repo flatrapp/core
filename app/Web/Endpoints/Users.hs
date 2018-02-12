@@ -43,7 +43,7 @@ returnUserById Nothing =
 returnUserById (Just userId ) = do
   maybeUser <- runSQL $ P.selectFirst [SqlT.UserId ==. userId] []
   fromMaybe
-    (errorJson Util.UserNotFound)
+    (errorJson Util.NotFound)
     (json . JsonUser.jsonUser <$> maybeUser)
 
 getUsersAction :: SqlT.ApiAction ctx a
@@ -52,7 +52,7 @@ getUsersAction =
 
 deleteUserAction :: SqlT.UserId -> Maybe SqlT.User -> SqlT.ApiAction ctx a
 deleteUserAction _ Nothing = do
-  errorJson Util.UserNotFound
+  errorJson Util.NotFound
 deleteUserAction userId (Just _user) = do
   runSQL $ P.delete userId
   Util.emptyResponse
@@ -138,5 +138,5 @@ currentUserAction = do
   (email :: Text) <- fmap findFirst getContext
   maybeUser <- Util.runSQL $ P.selectFirst [SqlT.UserEmail ==. email] []
   case JsonUser.jsonUser <$> maybeUser of
-    Nothing -> Util.errorJson Util.UserNotFound  -- shouldn't really happen
+    Nothing -> Util.errorJson Util.NotFound  -- shouldn't really happen
     Just theUser -> json theUser

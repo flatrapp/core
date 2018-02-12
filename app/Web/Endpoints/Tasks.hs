@@ -59,20 +59,20 @@ getTasksAction =
 
 getTaskAction :: Maybe (Entity SqlT.Task) -> SqlT.ApiAction ctx a
 getTaskAction Nothing =
-  errorJson Util.TaskNotFound
+  errorJson Util.NotFound
 getTaskAction (Just task) =
   getTaskInfo json task
 
 deleteTaskAction :: SqlT.TaskId -> Maybe SqlT.Task -> SqlT.ApiAction ctx a
 deleteTaskAction _ Nothing =
-  errorJson Util.TaskNotFound
+  errorJson Util.NotFound
 deleteTaskAction taskId (Just _task) = do
   runSQL $ P.delete taskId
   Util.emptyResponse
 
 finishTaskAction :: SqlT.TaskId -> Maybe (Entity SqlT.Turn) -> SqlT.ApiAction ctx a
 finishTaskAction _ Nothing =
-  errorJson Util.TaskNotFound
+  errorJson Util.NotFound
 finishTaskAction taskId (Just _turn) = do
   currentTime <- liftIO getCurrentTime
   runSQL $ P.updateWhere
@@ -85,7 +85,7 @@ finishTaskAction taskId (Just _turn) = do
 
 putTaskAction :: SqlT.TaskId -> Maybe SqlT.Task -> SqlT.ApiAction ctx a
 putTaskAction _ Nothing =
-  errorJson Util.TaskNotFound
+  errorJson Util.NotFound
 -- TODO combine with postTaskAction
 -- TODO maybe to JsonTask.Task with argument pattern matching as well
 putTaskAction taskId (Just _task) = do
