@@ -55,7 +55,6 @@ data JsonError
   = CredentialsWrong
   | Unauthorized
   | BadRequest
-  | TokenInvalid
   | NotFound
   | EmailNotVerified
   | InvitationCodeInvalid
@@ -82,14 +81,13 @@ errorJson err = do
     (status, strs) = (conv' err)
 
     conv' :: JsonError -> (Status, (String, String))
-    conv' CredentialsWrong      = (forbidden403,    ("credentials_wrong", "User does not exist or password is wrong."))
-    conv' Unauthorized          = (unauthorized401, ("unauthorized", "Unauthorized."))
-    conv' BadRequest            = (badRequest400,   ("bad_request", "Bad request. Not understood."))
-    conv' TokenInvalid          = (status200,       ("token_invalid", "The token is invalid, you should authorize yourself again."))
+    conv' CredentialsWrong      = (unauthorized401, ("credentials_wrong", "User does not exist or password is wrong."))
+    conv' Unauthorized          = (unauthorized401, ("unauthorized", "You are not authorized to access this resource."))
+    conv' BadRequest            = (badRequest400,   ("bad_request", "Bad request"))
     conv' NotFound              = (notFound404,     ("not_found", "The requested resource could not be found."))
     conv' EmailNotVerified      = (forbidden403,    ("email_not_verified", "You have not verified your email address yet."))
     conv' InvitationCodeInvalid = (forbidden403,    ("invitation_code_invalid", "This is not a valid invitation code."))
-    conv' NotInvited            = (unauthorized401, ("not_invited", "Your email address is not invited."))
+    conv' NotInvited            = (forbidden403,    ("not_invited", "Your email address is not invited."))
     conv' UserEmailExists       = (conflict409,     ("user_email_exists", "A user with this email address already exists."))
     conv' InvitationEmailExists = (conflict409,     ("invitation_email_exists", "An invitation with this email address already exists."))
     conv' UserDisabled          = (forbidden403,    ("user_disabled", "This user is disabled and has to be enabled before being able to log in."))

@@ -23,6 +23,7 @@ import qualified Model.JsonTypes.Turn      as JsonTurn
 import           Util                      (errorJson, runSQL)
 import qualified Util
 
+-- TODO restrict all endpoints to logged in users
 routeTasks :: SqlT.Api ctx
 routeTasks = do
   get "tasks" getTasksAction

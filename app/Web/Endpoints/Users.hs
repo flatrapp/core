@@ -26,6 +26,7 @@ import           Util                         (errorJson, runSQL)
 import qualified Util
 import           Web.Spock
 
+-- TODO restrict all endpoints to logged in users EXCEPT post "users"
 routeUsers :: Cfg.FlatrCfg -> SqlT.Api ctx
 routeUsers cfg = do  -- TODO use cfg from State Monad somehow
   get "users" getUsersAction

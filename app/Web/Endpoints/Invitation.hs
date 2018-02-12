@@ -20,6 +20,7 @@ import qualified Model.JsonTypes.Invitation as JsonInvitation
 import           Util                       (errorJson, runSQL)
 import qualified Util
 
+-- TODO restrict all endpoints to logged in users
 routeInvitations :: SqlT.Api ctx
 routeInvitations = do
   get "invitations" getInvitationAction
@@ -45,7 +46,7 @@ resendInvitation invitationId  = do
   mInvitation <- runSQL $ P.selectFirst [SqlT.InvitationId ==. invitationId] []
   case mInvitation of
     Nothing -> errorJson Util.NotFound
-    Just invitation -> do
+    Just invitation ->
       -- TODO resend invitation mail
      json . JsonInvitation.jsonInvitation $ invitation
 

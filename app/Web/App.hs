@@ -39,7 +39,7 @@ app cfg =
     routeTasks
     routeInfo
     routeInvitations
-    (routeUsers cfg)
+    routeUsers cfg
     prehook authHook $ do
       get ("users" <//> "current") currentUserAction  -- TODO move to Endpoints/Users.hs
       get "secret" secretAction
@@ -97,11 +97,12 @@ authHook = do
             let maybeTokenId = JWT.jti =<< maybeClaims
             let maybeSubject = JWT.sub =<< maybeClaims
             case maybeTokenId `Util.maybeTuple` maybeSubject of
-              Nothing -> Util.errorJson Util.TokenInvalid
+              Nothing ->
+                Util.errorJson Util.Unauthorized  -- Token is invalid
               Just (tokenId, subject) -> do
                 maybeT <- Util.runSQL $ P.selectFirst [TokenTokenId ==. Util.showText tokenId] []
                 case maybeT of
-                  Nothing -> do
+                  Nothing ->
                     Util.errorJson Util.Unauthorized
                   Just (Entity _tokenId token) -> do
                     currentTime <- liftIO getCurrentTime
