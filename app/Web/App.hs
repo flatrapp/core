@@ -15,7 +15,7 @@ import           Data.Monoid               ((<>))
 import           Data.Text                 (Text, pack)
 import qualified Data.Text                 as T
 import qualified Data.Text.Encoding        as T
-import           Data.Time.Clock           (getCurrentTime)
+import           Data.Time.Clock           (getCurrentTime, UTCTime)
 import           Data.Time.Clock.POSIX     (getPOSIXTime)
 import qualified Database.Persist          as P
 import           Database.Persist.Sql      hiding (delete, get)
@@ -80,34 +80,39 @@ errorHandler status
                     ]
                   ]
 
+tokenFromHeader :: Text -> Maybe Text
+tokenFromHeader = T.stripPrefix "Bearer "
+
+extractToken :: JWT.JSON -> Maybe JWT.JWTClaimsSet
+extractToken bearerToken =
+  JWT.claims <$> JWT.decodeAndVerifySignature (JWT.secret jwtSecret) bearerToken
+
+retrieveServerToken :: (SpockConn m ~ SqlBackend, Monad m, HasSpock m) =>
+                       Maybe JWT.StringOrURI -> m (Maybe (Entity Token))
+retrieveServerToken (Just tokenId) = Util.runSQL $ P.selectFirst [TokenTokenId ==. Util.showText tokenId] []
+retrieveServerToken Nothing        = return Nothing
+
+validateToken :: UTCTime -> Token -> Maybe Token
+validateToken currentTime token
+  | tokenValidUntil token < currentTime = Just token
+  | otherwise = Nothing
+
+conditionalTokenEntityUnpack :: (Token -> Maybe Token) -> Maybe (Entity Token) -> Maybe Token
+conditionalTokenEntityUnpack = flip ((>>=) . fmap entityVal)
+
 authHook :: ApiAction (HVect xs) (HVect (Email ': xs))
 authHook = do
-    oldCtx <- getContext
-    maybeAuthHeader <- header "Authorization"
-    case maybeAuthHeader of
-      Nothing ->
-        Util.errorJson Util.Unauthorized
-      Just authHeader ->
-        case T.stripPrefix "Bearer " authHeader of
-          Nothing -> do
-            Util.errorJson Util.Unauthorized
-          Just bearerToken -> do
-            let maybeClaims = JWT.claims <$>
-                          JWT.decodeAndVerifySignature (JWT.secret jwtSecret) bearerToken
-            let maybeTokenId = JWT.jti =<< maybeClaims
-            let maybeSubject = JWT.sub =<< maybeClaims
-            case maybeTokenId `Util.maybeTuple` maybeSubject of
-              Nothing ->
-                Util.errorJson Util.Unauthorized  -- Token is invalid
-              Just (tokenId, subject) -> do
-                maybeT <- Util.runSQL $ P.selectFirst [TokenTokenId ==. Util.showText tokenId] []
-                case maybeT of
-                  Nothing ->
-                    Util.errorJson Util.Unauthorized
-                  Just (Entity _tokenId token) -> do
-                    currentTime <- liftIO getCurrentTime
-                    if tokenValidUntil token < currentTime then do
-                      let _ = token :: Token
-                      Util.errorJson Util.Unauthorized
-                    else
-                      return $ (pack . show $ subject) :&: oldCtx
+  oldCtx <- getContext
+  maybeAuthHeader <- header "Authorization"
+  currentTime <- liftIO getCurrentTime
+  let maybeClaims = maybeAuthHeader >>= tokenFromHeader >>= extractToken
+  let maybeTokenId = JWT.jti =<< maybeClaims
+  let maybeSubject = JWT.sub =<< maybeClaims
+
+  (maybeT::Maybe Token) <- conditionalTokenEntityUnpack (validateToken currentTime) <$> retrieveServerToken maybeTokenId
+
+  case maybeT >> maybeSubject of
+    Nothing ->
+      Util.errorJson Util.Unauthorized
+    Just subject ->
+      return $ (pack . show $ subject) :&: oldCtx
