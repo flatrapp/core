@@ -15,17 +15,18 @@ import           Data.Time.Clock.POSIX            (POSIXTime, getPOSIXTime,
                                                    posixSecondsToUTCTime)
 import qualified Database.Persist                 as P
 import           Database.Persist.Sql             hiding (delete, get)
-import qualified Model.CoreTypes                  as SqlT
+import           Model.CoreTypes                  (ApiAction, Api)
+import qualified Model.SqlTypes                   as SqlT
 import           Model.JsonTypes.LoginCredentials
 import qualified Util
 import qualified Web.JWT                          as JWT
 import           Web.Spock
 
-routeAuth :: SqlT.Api ctx
+routeAuth :: Api ctx
 routeAuth =
   post "auth" $ jsonBody >>= postAuthAction
 
-postAuthAction :: Maybe LoginCredentials -> SqlT.ApiAction ctx a
+postAuthAction :: Maybe LoginCredentials -> ApiAction ctx a
 postAuthAction Nothing = Util.errorJson Util.BadRequest
 postAuthAction (Just loginCredentials) = do
   maybeUser <- Util.runSQL $ P.selectFirst [SqlT.UserEmail ==. email loginCredentials] []  -- TODO chain this somehow with the Maybe LoginCredentials

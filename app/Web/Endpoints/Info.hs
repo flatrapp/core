@@ -5,7 +5,7 @@ module Web.Endpoints.Info where
 import           Control.Monad.IO.Class
 import           Data.Text              (Text)
 import           Data.Time.Clock        (getCurrentTime)
-import qualified Model.CoreTypes        as SqlT
+import           Model.CoreTypes        (ApiAction, Api)
 import           Model.JsonTypes.Info
 import           Web.Spock
 
@@ -15,7 +15,7 @@ apiVersion = "v0.1"
 serverName :: Text
 serverName = "core"
 
-getInfoAction :: SqlT.ApiAction ctx a
+getInfoAction :: ApiAction ctx a
 getInfoAction = do
   currentTime' <- liftIO getCurrentTime
   json Info { version     = apiVersion
@@ -23,5 +23,5 @@ getInfoAction = do
             , name        = serverName
             }
 
-routeInfo :: SqlT.Api ctx
+routeInfo :: Api ctx
 routeInfo = get "info" getInfoAction

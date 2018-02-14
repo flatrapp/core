@@ -17,7 +17,8 @@ import           Data.Maybe
 import           Data.Text                    (Text)
 import           Database.Persist             hiding (delete, get)
 import qualified Database.Persist             as P
-import qualified Model.CoreTypes              as SqlT
+import           Model.CoreTypes              (ApiAction, Api, Email)
+import qualified Model.SqlTypes               as SqlT
 import qualified Model.JsonTypes.Registration as JsonRegistration
 import qualified Model.JsonTypes.User         as JsonUser
 import           Network.HTTP.Types.Status    (created201)
@@ -27,7 +28,7 @@ import qualified Util
 import           Web.Spock
 
 -- TODO restrict all endpoints to logged in users EXCEPT post "users"
-routeUsers :: Cfg.FlatrCfg -> SqlT.Api ctx
+routeUsers :: Cfg.FlatrCfg -> Api ctx
 routeUsers cfg = do  -- TODO use cfg from State Monad somehow
   get "users" getUsersAction
   get ("users" <//> var) $ returnUserById . Just
@@ -37,7 +38,7 @@ routeUsers cfg = do  -- TODO use cfg from State Monad somehow
   post "users" $
     jsonBody >>= postUsersAction cfg  -- TODO use the Nothing case as intermediate action and chain it in somehow
 
-returnUserById :: Maybe (Key SqlT.User) -> SqlT.ApiAction ctx m
+returnUserById :: Maybe (Key SqlT.User) -> ApiAction ctx m
 returnUserById Nothing =
   -- TODO combine with registration... because this function is also called once when there is no registration happening
   Util.errorJson Util.UserEmailExists
@@ -47,18 +48,18 @@ returnUserById (Just userId ) = do
     (errorJson Util.NotFound)
     (json . JsonUser.jsonUser <$> maybeUser)
 
-getUsersAction :: SqlT.ApiAction ctx a
+getUsersAction :: ApiAction ctx a
 getUsersAction =
   json =<< (map JsonUser.jsonUser <$> runSQL (selectList [] [Asc SqlT.UserId]))
 
-deleteUserAction :: SqlT.UserId -> Maybe SqlT.User -> SqlT.ApiAction ctx a
-deleteUserAction _ Nothing = do
+deleteUserAction :: SqlT.UserId -> Maybe SqlT.User -> ApiAction ctx a
+deleteUserAction _ Nothing =
   errorJson Util.NotFound
 deleteUserAction userId (Just _user) = do
   runSQL $ P.delete userId
   Util.emptyResponse
 
-postUsersAction :: Cfg.FlatrCfg -> Maybe JsonRegistration.Registration -> SqlT.ApiAction ctx a
+postUsersAction :: Cfg.FlatrCfg -> Maybe JsonRegistration.Registration -> ApiAction ctx a
 postUsersAction _ Nothing =
   errorJson Util.BadRequest
 postUsersAction cfg (Just registration) =
@@ -115,9 +116,9 @@ postUsersAction cfg (Just registration) =
 -- TODO check that user is not there
 registerUser :: JsonRegistration.Registration
              -> StdGen
-             -> SqlT.Email
+             -> Email
              -> Bool
-             -> SqlT.ApiAction ctx (Maybe (Key SqlT.User))
+             -> ApiAction ctx (Maybe (Key SqlT.User))
 registerUser registration gen mail verified = runSQL $ insertUnique user
     where user = SqlT.User
                     { SqlT.userEmail     = mail
@@ -134,7 +135,7 @@ registerUser registration gen mail verified = runSQL $ insertUnique user
           hashedSaltedPassword = Util.hashPassword pw salt'
 
 
-currentUserAction :: ListContains n SqlT.Email xs => SqlT.ApiAction (HVect xs) a
+currentUserAction :: ListContains n Email xs => ApiAction (HVect xs) a
 currentUserAction = do
   (email :: Text) <- fmap findFirst getContext
   maybeUser <- Util.runSQL $ P.selectFirst [SqlT.UserEmail ==. email] []

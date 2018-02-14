@@ -15,13 +15,14 @@ import qualified Database.Persist           as P
 import           Network.HTTP.Types.Status  (created201)
 import           Text.Printf
 import           Web.Spock
-import qualified Model.CoreTypes            as SqlT
+import           Model.CoreTypes            (ApiAction, Api)
+import qualified Model.SqlTypes             as SqlT
 import qualified Model.JsonTypes.Invitation as JsonInvitation
 import           Util                       (errorJson, runSQL)
 import qualified Util
 
 -- TODO restrict all endpoints to logged in users
-routeInvitations :: SqlT.Api ctx
+routeInvitations :: Api ctx
 routeInvitations = do
   get "invitations" getInvitationAction
   delete ("invitations" <//> var) $ \invitationId ->
@@ -29,19 +30,19 @@ routeInvitations = do
   patch ("invitations" <//> var) resendInvitation
   post "invitations" (jsonBody >>= postInvitationAction)
 
-getInvitationAction :: SqlT.ApiAction ctx a
+getInvitationAction :: ApiAction ctx a
 getInvitationAction = do
   allInvitations <- runSQL $ selectList [] [Asc SqlT.InvitationId]
   json $ map JsonInvitation.jsonInvitation allInvitations
 
-deleteInvitationAction :: SqlT.InvitationId -> Maybe SqlT.Invitation -> SqlT.ApiAction ctx a
+deleteInvitationAction :: SqlT.InvitationId -> Maybe SqlT.Invitation -> ApiAction ctx a
 deleteInvitationAction _ Nothing =
   errorJson Util.NotFound
 deleteInvitationAction invitationId (Just _theInvitation) = do
   runSQL $ P.delete invitationId
   Util.emptyResponse
 
-resendInvitation :: SqlT.InvitationId -> SqlT.ApiAction ctx a
+resendInvitation :: SqlT.InvitationId -> ApiAction ctx a
 resendInvitation invitationId  = do
   mInvitation <- runSQL $ P.selectFirst [SqlT.InvitationId ==. invitationId] []
   case mInvitation of
@@ -50,7 +51,7 @@ resendInvitation invitationId  = do
       -- TODO resend invitation mail
      json . JsonInvitation.jsonInvitation $ invitation
 
-postInvitationAction :: Maybe JsonInvitation.Invitation -> SqlT.ApiAction ctx a
+postInvitationAction :: Maybe JsonInvitation.Invitation -> ApiAction ctx a
 postInvitationAction Nothing =
   errorJson Util.BadRequest
 postInvitationAction (Just invitation) = do

@@ -20,7 +20,8 @@ import           Data.Time.Clock.POSIX     (getPOSIXTime)
 import qualified Database.Persist          as P
 import           Database.Persist.Sql      hiding (delete, get)
 import           Database.Persist.Sqlite   (SqlBackend)
-import           Model.CoreTypes
+import           Model.CoreTypes           (Api, ApiAction, Email)
+import           Model.SqlTypes            (Token, tokenValidUntil, EntityField(TokenTokenId))
 import           Network.HTTP.Types.Status (Status, notFound404, statusMessage)
 import qualified Util
 import           Web.Endpoints.Auth

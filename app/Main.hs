@@ -8,7 +8,7 @@ import           Web.Spock.Config
 import qualified Config
 import           Control.Monad.Logger    (runStdoutLoggingT)
 import           Database.Persist.Sqlite hiding (delete, get)
-import           Model.CoreTypes
+import           Model.SqlTypes          (migrateAll)
 import           System.Environment
 import           Web.App
 

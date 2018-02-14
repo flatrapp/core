@@ -17,14 +17,15 @@ import           Network.HTTP.Types.Status (created201)
 import           Text.Printf
 import           Web.Spock                 hiding (head)
 
-import qualified Model.CoreTypes           as SqlT
+import           Model.CoreTypes           (ApiAction, Api)
+import qualified Model.SqlTypes            as SqlT
 import qualified Model.JsonTypes.Task      as JsonTask
 import qualified Model.JsonTypes.Turn      as JsonTurn
 import           Util                      (errorJson, runSQL)
 import qualified Util
 
 -- TODO restrict all endpoints to logged in users
-routeTasks :: SqlT.Api ctx
+routeTasks :: Api ctx
 routeTasks = do
   get "tasks" getTasksAction
   get ("tasks" <//> var) $ \taskId ->
@@ -38,7 +39,7 @@ routeTasks = do
     runSQL (P.get taskId) >>= putTaskAction taskId
   post "tasks" $ jsonBody >>= postTasksAction
 
-getTaskInfo :: (JsonTask.Task -> SqlT.ApiAction ctx a) -> Entity SqlT.Task -> SqlT.ApiAction ctx a
+getTaskInfo :: (JsonTask.Task -> ApiAction ctx a) -> Entity SqlT.Task -> ApiAction ctx a
 getTaskInfo fun theTask@(Entity taskId _task) = do
   users <- map (\(Entity _ taskUser) -> SqlT.taskUserUserId taskUser)
              <$> runSQL (P.selectList [SqlT.TaskUserTaskId ==. taskId] [])
@@ -54,24 +55,24 @@ getTaskInfo fun theTask@(Entity taskId _task) = do
                          (Nothing, otherTurns)
   fun $ JsonTask.jsonTask users splitTurns theTask
 
-getTasksAction :: SqlT.ApiAction ctx a
+getTasksAction :: ApiAction ctx a
 getTasksAction =
   json =<< mapM (getTaskInfo return) =<< runSQL (selectList [] [Asc SqlT.TaskId])
 
-getTaskAction :: Maybe (Entity SqlT.Task) -> SqlT.ApiAction ctx a
+getTaskAction :: Maybe (Entity SqlT.Task) -> ApiAction ctx a
 getTaskAction Nothing =
   errorJson Util.NotFound
 getTaskAction (Just task) =
   getTaskInfo json task
 
-deleteTaskAction :: SqlT.TaskId -> Maybe SqlT.Task -> SqlT.ApiAction ctx a
+deleteTaskAction :: SqlT.TaskId -> Maybe SqlT.Task -> ApiAction ctx a
 deleteTaskAction _ Nothing =
   errorJson Util.NotFound
 deleteTaskAction taskId (Just _task) = do
   runSQL $ P.delete taskId
   Util.emptyResponse
 
-finishTaskAction :: SqlT.TaskId -> Maybe (Entity SqlT.Turn) -> SqlT.ApiAction ctx a
+finishTaskAction :: SqlT.TaskId -> Maybe (Entity SqlT.Turn) -> ApiAction ctx a
 finishTaskAction _ Nothing =
   errorJson Util.NotFound
 finishTaskAction taskId (Just _turn) = do
@@ -84,7 +85,7 @@ finishTaskAction taskId (Just _turn) = do
     [SqlT.TurnFinishedAt =. Just currentTime]
   Util.emptyResponse
 
-putTaskAction :: SqlT.TaskId -> Maybe SqlT.Task -> SqlT.ApiAction ctx a
+putTaskAction :: SqlT.TaskId -> Maybe SqlT.Task -> ApiAction ctx a
 putTaskAction _ Nothing =
   errorJson Util.NotFound
 -- TODO combine with postTaskAction
@@ -109,7 +110,7 @@ putTaskAction taskId (Just _task) = do
           setHeader "Location" location
           getTaskInfo json newTask
 
-postTasksAction :: Maybe JsonTask.Task -> SqlT.ApiAction ctx a
+postTasksAction :: Maybe JsonTask.Task -> ApiAction ctx a
 postTasksAction Nothing =
   errorJson Util.BadRequest
 postTasksAction (Just task) = do

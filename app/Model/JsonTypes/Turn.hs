@@ -6,7 +6,7 @@ import           Data.Aeson           hiding (json)
 import           Database.Persist.Sql
 import           Data.Time.Clock      (UTCTime)
 import           GHC.Generics
-import qualified Model.CoreTypes      as SqlT
+import qualified Model.SqlTypes       as SqlT
 import           Prelude              hiding (id)
 import qualified Util
 

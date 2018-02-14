@@ -6,7 +6,7 @@ import           Data.Aeson           hiding (json)
 import           Data.Text            (Text)
 import           Database.Persist.Sql
 import           GHC.Generics
-import qualified Model.CoreTypes      as SqlT
+import qualified Model.SqlTypes       as SqlT
 import           Prelude              hiding (id)
 import           Util
 
