@@ -95,7 +95,7 @@ retrieveServerToken Nothing        = return Nothing
 
 validateToken :: UTCTime -> Token -> Maybe Token
 validateToken currentTime token
-  | tokenValidUntil token < currentTime = Just token
+  | tokenValidUntil token > currentTime = Just token
   | otherwise = Nothing
 
 conditionalTokenEntityUnpack :: (Token -> Maybe Token) -> Maybe (Entity Token) -> Maybe Token
