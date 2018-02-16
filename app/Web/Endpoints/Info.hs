@@ -7,6 +7,7 @@ import           Data.Text              (Text)
 import           Data.Time.Clock        (getCurrentTime)
 import           Model.CoreTypes        (ApiAction, Api)
 import           Model.JsonTypes.Info
+import qualified Util
 import           Web.Spock
 
 apiVersion :: Text
@@ -23,5 +24,13 @@ getInfoAction = do
             , name        = serverName
             }
 
+postInfoAction :: ApiAction ctx a
+postInfoAction = do
+  foo <- Util.eitherJsonBody
+  text $ bar foo
+  --Right j -> text $ bar j
+
 routeInfo :: Api ctx
-routeInfo = get "info" getInfoAction
+routeInfo = do
+  get "info" getInfoAction
+  post "info" postInfoAction

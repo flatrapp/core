@@ -10,14 +10,18 @@ import           Control.Arrow
 import           Control.Monad.IO.Class
 import           Control.Monad.Logger      (LoggingT, runStdoutLoggingT)
 import qualified Crypto.Hash.SHA512        as SHA
-import           Data.Aeson                hiding (json)
+import           Data.Aeson                ( FromJSON
+                                           , object
+                                           , (.=)
+                                           , eitherDecodeStrict'
+                                           )
 import qualified Data.ByteString           as BS
 import qualified Data.ByteString.Base16    as B16
 import qualified Data.Text                 as T
 import qualified Data.Text.Encoding        as E
 import qualified Data.Word8
 import           Database.Persist.Sqlite
-import qualified Model.CoreTypes           as SqlT
+import qualified Model.CoreTypes           as CoreT
 import           Network.HTTP.Types.Status
 import           Prelude                   hiding (length)
 import           System.Random
@@ -107,7 +111,24 @@ integerKey = fromIntegral . fromSqlKey
 showText :: (Show a) => a -> T.Text
 showText = T.pack . show
 
-emptyResponse :: SqlT.ApiAction ctx a
+emptyResponse :: CoreT.ApiAction ctx a
 emptyResponse = do
   setStatus noContent204
   bytes BS.empty
+
+--eitherJsonBody :: (FromJSON a) => CoreT.ApiAction ctx (Either T.Text a)
+--eitherJsonBody = do
+--  b <- body
+--  return $ case eitherDecodeStrict' b of  -- TODO mapLeft
+--    Left err -> Left $ T.pack err
+--    Right val -> Right val
+
+eitherJsonBody :: (FromJSON a) => CoreT.ApiAction ctx a
+eitherJsonBody = do
+  b <- body
+  case eitherDecodeStrict' b of  -- TODO mapLeft
+    Left err -> do
+      setStatus badRequest400
+      text (T.pack $ "Failed to parse json: " ++ err)
+    Right val ->
+      return val
