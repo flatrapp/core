@@ -13,9 +13,4 @@ data Info =
           , name        :: Text
           } deriving (Show, Generic)
 
-data Foo =
-     Foo { bar        :: Text
-         } deriving (Show, Generic)
-
-instance FromJSON Foo
 instance ToJSON Info

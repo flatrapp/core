@@ -58,7 +58,7 @@ runSQL action = runQuery $ \conn -> runStdoutLoggingT $ runSqlConn action conn
 data JsonError
   = CredentialsWrong
   | Unauthorized
-  | BadRequest
+  | BadRequest String
   | NotFound
   | EmailNotVerified
   | InvitationCodeInvalid
@@ -87,7 +87,7 @@ errorJson err = do
     conv' :: JsonError -> (Status, (String, String))
     conv' CredentialsWrong      = (unauthorized401, ("credentials_wrong", "User does not exist or password is wrong."))
     conv' Unauthorized          = (unauthorized401, ("unauthorized", "You are not authorized to access this resource."))
-    conv' BadRequest            = (badRequest400,   ("bad_request", "Bad request"))
+    conv' (BadRequest errorMsg) = (badRequest400,   ("bad_request", errorMsg))
     conv' NotFound              = (notFound404,     ("not_found", "The requested resource could not be found."))
     conv' EmailNotVerified      = (forbidden403,    ("email_not_verified", "You have not verified your email address yet."))
     conv' InvitationCodeInvalid = (forbidden403,    ("invitation_code_invalid", "This is not a valid invitation code."))
@@ -127,8 +127,10 @@ eitherJsonBody :: (FromJSON a) => CoreT.ApiAction ctx a
 eitherJsonBody = do
   b <- body
   case eitherDecodeStrict' b of  -- TODO mapLeft
-    Left err -> do
-      setStatus badRequest400
-      text (T.pack $ "Failed to parse json: " ++ err)
+    -- TODO DO NOT expose literal errors to the client
+    -- it might include sensitive application details
+    -- Might require a change to the Aeson library
+    Left err ->
+      errorJson . BadRequest $ "Failed to parse json: " ++ err
     Right val ->
       return val

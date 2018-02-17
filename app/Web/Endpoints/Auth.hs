@@ -23,12 +23,10 @@ import qualified Web.JWT                          as JWT
 import           Web.Spock
 
 routeAuth :: Api ctx
-routeAuth =
-  post "auth" $ jsonBody >>= postAuthAction
+routeAuth = post "auth" $ Util.eitherJsonBody >>= postAuthAction
 
-postAuthAction :: Maybe LoginCredentials -> ApiAction ctx a
-postAuthAction Nothing = Util.errorJson Util.BadRequest
-postAuthAction (Just loginCredentials) = do
+postAuthAction :: LoginCredentials -> ApiAction ctx a
+postAuthAction loginCredentials = do
   maybeUser <- Util.runSQL $ P.selectFirst [SqlT.UserEmail ==. email loginCredentials] []  -- TODO chain this somehow with the Maybe LoginCredentials
   case maybeUser of
     Nothing ->

@@ -28,7 +28,7 @@ routeInvitations = do
   delete ("invitations" <//> var) $ \invitationId ->
     runSQL (P.get invitationId) >>= deleteInvitationAction invitationId
   patch ("invitations" <//> var) resendInvitation
-  post "invitations" (jsonBody >>= postInvitationAction)
+  post "invitations" (Util.eitherJsonBody >>= postInvitationAction)
 
 getInvitationAction :: ApiAction ctx a
 getInvitationAction = do
@@ -51,10 +51,8 @@ resendInvitation invitationId  = do
       -- TODO resend invitation mail
      json . JsonInvitation.jsonInvitation $ invitation
 
-postInvitationAction :: Maybe JsonInvitation.Invitation -> ApiAction ctx a
-postInvitationAction Nothing =
-  errorJson Util.BadRequest
-postInvitationAction (Just invitation) = do
+postInvitationAction :: JsonInvitation.Invitation -> ApiAction ctx a
+postInvitationAction invitation = do
   invitationCode <- Util.makeHex <$> liftIO (getRandomBytes 10)
   maybeInvitationId <- runSQL $ insertUnique
     SqlT.Invitation { SqlT.invitationEmail = JsonInvitation.email invitation

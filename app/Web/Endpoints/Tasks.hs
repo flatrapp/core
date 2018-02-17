@@ -36,8 +36,8 @@ routeTasks = do
     runSQL (P.selectFirst [SqlT.TurnTaskId ==. taskId] [])
     >>= finishTaskAction taskId
   put ("tasks" <//> var) $ \taskId ->
-    runSQL (P.get taskId) >>= putTaskAction taskId
-  post "tasks" $ jsonBody >>= postTasksAction
+    Util.eitherJsonBody >>= putTaskAction taskId
+  post "tasks" $ Util.eitherJsonBody >>= postTasksAction
 
 getTaskInfo :: (JsonTask.Task -> ApiAction ctx a) -> Entity SqlT.Task -> ApiAction ctx a
 getTaskInfo fun theTask@(Entity taskId _task) = do
@@ -85,16 +85,15 @@ finishTaskAction taskId (Just _turn) = do
     [SqlT.TurnFinishedAt =. Just currentTime]
   Util.emptyResponse
 
-putTaskAction :: SqlT.TaskId -> Maybe SqlT.Task -> ApiAction ctx a
-putTaskAction _ Nothing =
-  errorJson Util.NotFound
+putTaskAction :: SqlT.TaskId -> JsonTask.Task -> ApiAction ctx a
 -- TODO combine with postTaskAction
 -- TODO maybe to JsonTask.Task with argument pattern matching as well
-putTaskAction taskId (Just _task) = do
-  maybeJsonTask <- jsonBody
-  case maybeJsonTask of
-    Nothing -> errorJson Util.BadRequest
-    Just task -> do
+putTaskAction taskId task = do
+  maybeSqlTask <- runSQL (P.get taskId)
+  case maybeSqlTask of
+    Nothing ->
+      errorJson Util.NotFound
+    Just _task' -> do
       runSQL $ P.replace taskId SqlT.Task {
             SqlT.taskTitle          = JsonTask.title task
           , SqlT.taskDescription    = JsonTask.description task
@@ -110,10 +109,8 @@ putTaskAction taskId (Just _task) = do
           setHeader "Location" location
           getTaskInfo json newTask
 
-postTasksAction :: Maybe JsonTask.Task -> ApiAction ctx a
-postTasksAction Nothing =
-  errorJson Util.BadRequest
-postTasksAction (Just task) = do
+postTasksAction :: JsonTask.Task -> ApiAction ctx a
+postTasksAction task = do
   -- post actual Task
   taskId <- runSQL $ insert SqlT.Task {
         SqlT.taskTitle          = JsonTask.title task

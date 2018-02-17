@@ -36,7 +36,7 @@ routeUsers cfg = do  -- TODO use cfg from State Monad somehow
     runSQL (P.get userId) >>= deleteUserAction userId
   -- TOOD implement put "users" $ do
   post "users" $
-    jsonBody >>= postUsersAction cfg  -- TODO use the Nothing case as intermediate action and chain it in somehow
+    Util.eitherJsonBody >>= postUsersAction cfg  -- TODO use the Nothing case as intermediate action and chain it in somehow
 
 returnUserById :: Maybe (Key SqlT.User) -> ApiAction ctx m
 returnUserById Nothing =
@@ -59,10 +59,8 @@ deleteUserAction userId (Just _user) = do
   runSQL $ P.delete userId
   Util.emptyResponse
 
-postUsersAction :: Cfg.FlatrCfg -> Maybe JsonRegistration.Registration -> ApiAction ctx a
-postUsersAction _ Nothing =
-  errorJson Util.BadRequest
-postUsersAction cfg (Just registration) =
+postUsersAction :: Cfg.FlatrCfg -> JsonRegistration.Registration -> ApiAction ctx a
+postUsersAction cfg registration =
   case JsonRegistration.invitationCode registration of
     Just code -> do
       maybeInvitation <- runSQL $ P.selectFirst
@@ -111,7 +109,7 @@ postUsersAction cfg (Just registration) =
                 Util.errorJson Util.NotInvited
         Nothing ->
           -- User should provide at least code or email
-          Util.errorJson Util.BadRequest
+          Util.errorJson $ Util.BadRequest "Either one of [ 'code', 'email' ] has to be provided"
 
 -- TODO check that user is not there
 registerUser :: JsonRegistration.Registration
