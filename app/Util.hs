@@ -9,7 +9,7 @@ module Util where
 import           Control.Arrow
 import           Control.Monad.IO.Class
 import           Control.Monad.Logger      (LoggingT, runStdoutLoggingT)
-import qualified Crypto.Hash.SHA512        as SHA
+import qualified Crypto.KDF.Argon2       as Ar2
 import           Data.Aeson                ( FromJSON
                                            , object
                                            , (.=)
@@ -48,7 +48,8 @@ decodeHex = fst . B16.decode . E.encodeUtf8
 
 hashPassword :: T.Text -> BS.ByteString -> T.Text
 hashPassword password salt =
-     makeHex . SHA.finalize $ SHA.updates SHA.init [salt, E.encodeUtf8 password]
+    makeHex . throwCryptoError $ Ar2.hash Ar2.defaultOptions (E.encodeUtf8 password) salt 1024
+    -- throwCryptoError can in theory throw, crashing the program. But this will happen only if salt length or output size are invalid. As this will never be the case (as long as we provide acceptable salts), this will never happen.
 
 runSQL
   :: (HasSpock m, SpockConn m ~ SqlBackend)
