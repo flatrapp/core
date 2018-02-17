@@ -9,7 +9,8 @@ module Util where
 import           Control.Arrow
 import           Control.Monad.IO.Class
 import           Control.Monad.Logger      (LoggingT, runStdoutLoggingT)
-import qualified Crypto.KDF.Argon2       as Ar2
+import qualified Crypto.KDF.Argon2         as Ar2
+import           Crypto.Error              (throwCryptoError)
 import           Data.Aeson                ( FromJSON
                                            , object
                                            , (.=)
