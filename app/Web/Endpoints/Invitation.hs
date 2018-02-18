@@ -24,21 +24,19 @@ import qualified Util
 -- TODO restrict all endpoints to logged in users
 routeInvitations :: Api ctx
 routeInvitations = do
-  get "invitations" getInvitationAction
+  get "invitations" getInvitationsAction
   delete ("invitations" <//> var) $ \invitationId ->
-    runSQL (P.get invitationId) >>= deleteInvitationAction invitationId
+    Util.trySqlGet invitationId >> deleteInvitationAction invitationId
   patch ("invitations" <//> var) resendInvitation
   post "invitations" (Util.eitherJsonBody >>= postInvitationAction)
 
-getInvitationAction :: ApiAction ctx a
-getInvitationAction = do
+getInvitationsAction :: ApiAction ctx a
+getInvitationsAction = do
   allInvitations <- runSQL $ selectList [] [Asc SqlT.InvitationId]
   json $ map JsonInvitation.jsonInvitation allInvitations
 
-deleteInvitationAction :: SqlT.InvitationId -> Maybe SqlT.Invitation -> ApiAction ctx a
-deleteInvitationAction _ Nothing =
-  errorJson Util.NotFound
-deleteInvitationAction invitationId (Just _theInvitation) = do
+deleteInvitationAction :: SqlT.InvitationId -> ApiAction ctx a
+deleteInvitationAction invitationId = do
   runSQL $ P.delete invitationId
   Util.emptyResponse
 
@@ -46,7 +44,7 @@ resendInvitation :: SqlT.InvitationId -> ApiAction ctx a
 resendInvitation invitationId  = do
   mInvitation <- runSQL $ P.selectFirst [SqlT.InvitationId ==. invitationId] []
   case mInvitation of
-    Nothing -> errorJson Util.NotFound
+    Nothing -> errorJson Util.NotFound  -- TODO use Util.trySqlGet
     Just invitation ->
       -- TODO resend invitation mail
      json . JsonInvitation.jsonInvitation $ invitation

@@ -33,7 +33,7 @@ routeUsers cfg = do  -- TODO use cfg from State Monad somehow
   get "users" getUsersAction
   get ("users" <//> var) $ returnUserById . Just
   delete ("user" <//> var) $ \userId ->
-    runSQL (P.get userId) >>= deleteUserAction userId
+    Util.trySqlGet userId >> deleteUserAction userId
   -- TOOD implement put "users" $ do
   post "users" $
     Util.eitherJsonBody >>= postUsersAction cfg  -- TODO use the Nothing case as intermediate action and chain it in somehow
@@ -43,7 +43,7 @@ returnUserById Nothing =
   -- TODO combine with registration... because this function is also called once when there is no registration happening
   Util.errorJson Util.UserEmailExists
 returnUserById (Just userId ) = do
-  maybeUser <- runSQL $ P.selectFirst [SqlT.UserId ==. userId] []
+  maybeUser <- runSQL $ P.selectFirst [SqlT.UserId ==. userId] []  -- TODO use Util.trySqlGet
   fromMaybe
     (errorJson Util.NotFound)
     (json . JsonUser.jsonUser <$> maybeUser)
@@ -52,17 +52,14 @@ getUsersAction :: ApiAction ctx a
 getUsersAction =
   json =<< (map JsonUser.jsonUser <$> runSQL (selectList [] [Asc SqlT.UserId]))
 
-deleteUserAction :: SqlT.UserId -> Maybe SqlT.User -> ApiAction ctx a
-deleteUserAction _ Nothing =
-  errorJson Util.NotFound
-deleteUserAction userId (Just _user) = do
+deleteUserAction :: SqlT.UserId -> ApiAction ctx a
+deleteUserAction userId = do
   runSQL $ P.delete userId
   Util.emptyResponse
 
 postUsersAction :: Cfg.FlatrCfg -> JsonRegistration.Registration -> ApiAction ctx a
-postUsersAction cfg registration =
-  case JsonRegistration.invitationCode registration of
-    Just code -> do
+postUsersAction cfg registration
+  | Just code <- JsonRegistration.invitationCode registration = do
       maybeInvitation <- runSQL $ P.selectFirst
         [SqlT.InvitationCode ==. Just code] []
       case maybeInvitation of
@@ -82,7 +79,7 @@ postUsersAction cfg registration =
               gen <- liftIO getStdGen
               newId <- registerUser registration gen email True
               returnUserById newId
-    Nothing -> do
+  | otherwise = do
       gen <- liftIO getStdGen
       case JsonRegistration.email registration of
         Just email ->
@@ -136,7 +133,7 @@ registerUser registration gen mail verified = runSQL $ insertUnique user
 currentUserAction :: ListContains n Email xs => ApiAction (HVect xs) a
 currentUserAction = do
   (email :: Text) <- fmap findFirst getContext
-  maybeUser <- Util.runSQL $ P.selectFirst [SqlT.UserEmail ==. email] []
+  maybeUser <- Util.runSQL $ P.selectFirst [SqlT.UserEmail ==. email] []  -- TODO use Util.trySqlGet
   case JsonUser.jsonUser <$> maybeUser of
     Nothing -> Util.errorJson Util.NotFound  -- shouldn't really happen
     Just theUser -> json theUser

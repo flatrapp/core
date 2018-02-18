@@ -31,7 +31,7 @@ routeTasks = do
   get ("tasks" <//> var) $ \taskId ->
     runSQL (P.selectFirst [SqlT.TaskId ==. taskId] []) >>= getTaskAction
   delete ("tasks" <//> var) $ \taskId ->
-    runSQL (P.get taskId) >>= deleteTaskAction taskId
+    Util.trySqlGet taskId >> deleteTaskAction taskId
   post ("tasks" <//> var <//> "finish") $ \taskId ->
     runSQL (P.selectFirst [SqlT.TurnTaskId ==. taskId] [])
     >>= finishTaskAction taskId
@@ -61,20 +61,18 @@ getTasksAction =
 
 getTaskAction :: Maybe (Entity SqlT.Task) -> ApiAction ctx a
 getTaskAction Nothing =
-  errorJson Util.NotFound
+  errorJson Util.NotFound  -- TODO use Util.trySqlGet
 getTaskAction (Just task) =
   getTaskInfo json task
 
-deleteTaskAction :: SqlT.TaskId -> Maybe SqlT.Task -> ApiAction ctx a
-deleteTaskAction _ Nothing =
-  errorJson Util.NotFound
-deleteTaskAction taskId (Just _task) = do
+deleteTaskAction :: SqlT.TaskId -> ApiAction ctx a
+deleteTaskAction taskId = do
   runSQL $ P.delete taskId
   Util.emptyResponse
 
 finishTaskAction :: SqlT.TaskId -> Maybe (Entity SqlT.Turn) -> ApiAction ctx a
 finishTaskAction _ Nothing =
-  errorJson Util.NotFound
+  errorJson Util.NotFound  -- TODO use Util.trySqlGet
 finishTaskAction taskId (Just _turn) = do
   currentTime <- liftIO getCurrentTime
   runSQL $ P.updateWhere
@@ -89,25 +87,21 @@ putTaskAction :: SqlT.TaskId -> JsonTask.Task -> ApiAction ctx a
 -- TODO combine with postTaskAction
 -- TODO maybe to JsonTask.Task with argument pattern matching as well
 putTaskAction taskId task = do
-  maybeSqlTask <- runSQL (P.get taskId)
-  case maybeSqlTask of
-    Nothing ->
-      errorJson Util.NotFound
-    Just _task' -> do
-      runSQL $ P.replace taskId SqlT.Task {
-            SqlT.taskTitle          = JsonTask.title task
-          , SqlT.taskDescription    = JsonTask.description task
-          , SqlT.taskFrequency      = JsonTask.frequency task
-          , SqlT.taskCompletionTime = JsonTask.completionTime task  -- TODO assert than cannot be negative
-          }
-      maybeTask <- runSQL $ selectFirst [SqlT.TaskId ==. taskId] []
-      case maybeTask of
-        Nothing -> error "I fucked up #1"
-        Just newTask -> do
-          setStatus created201
-          let location :: T.Text = T.pack $ printf "/tasks/%d" (Util.integerKey taskId :: Integer)
-          setHeader "Location" location
-          getTaskInfo json newTask
+  _task <- Util.trySqlGet taskId  -- we just want to check if it is there TODO maybe think of something better
+  runSQL $ P.replace taskId SqlT.Task {
+        SqlT.taskTitle          = JsonTask.title task
+      , SqlT.taskDescription    = JsonTask.description task
+      , SqlT.taskFrequency      = JsonTask.frequency task
+      , SqlT.taskCompletionTime = JsonTask.completionTime task  -- TODO assert than cannot be negative
+      }
+  maybeTask <- runSQL $ selectFirst [SqlT.TaskId ==. taskId] []
+  case maybeTask of
+    Nothing -> error "I fucked up #1"
+    Just newTask -> do
+      setStatus created201
+      let location :: T.Text = T.pack $ printf "/tasks/%d" (Util.integerKey taskId :: Integer)
+      setHeader "Location" location
+      getTaskInfo json newTask
 
 postTasksAction :: JsonTask.Task -> ApiAction ctx a
 postTasksAction task = do

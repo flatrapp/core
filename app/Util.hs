@@ -20,6 +20,7 @@ import qualified Data.ByteString.Base16    as B16
 import qualified Data.Text                 as T
 import qualified Data.Text.Encoding        as E
 import qualified Data.Word8
+import qualified Database.Persist          as P
 import           Database.Persist.Sqlite
 import qualified Model.CoreTypes           as CoreT
 import           Network.HTTP.Types.Status
@@ -128,9 +129,17 @@ eitherJsonBody = do
   b <- body
   case eitherDecodeStrict' b of  -- TODO mapLeft
     -- TODO DO NOT expose literal errors to the client
-    -- it might include sensitive application details
-    -- Might require a change to the Aeson library
+    -- it might include sensitive application details.
+    -- Might require a change to the Aeson library.
     Left err ->
       errorJson . BadRequest $ "Failed to parse json: " ++ err
     Right val ->
       return val
+
+-- TODO figure out correct type signature
+--trySqlGet :: (PersistEntity val) => Key val -> CoreT.ApiAction ctx val
+trySqlGet entityId = do
+  mEntity <- runSQL $ P.get entityId
+  case mEntity of
+    Nothing -> errorJson NotFound
+    Just entity -> return entity
