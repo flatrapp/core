@@ -21,7 +21,14 @@ import qualified Data.Text                 as T
 import qualified Data.Text.Encoding        as E
 import qualified Data.Word8
 import qualified Database.Persist          as P
-import           Database.Persist.Sqlite
+import           Database.Persist          ((==.))
+import           Database.Persist.Sqlite   ( SqlBackend
+                                           , SqlPersistT
+                                           , Key
+                                           , ToBackendKey
+                                           , runSqlConn
+                                           , fromSqlKey
+                                           )
 import qualified Model.CoreTypes           as CoreT
 import           Network.HTTP.Types.Status
 import           Prelude                   hiding (length)
@@ -136,10 +143,38 @@ eitherJsonBody = do
     Right val ->
       return val
 
+-- TODO combine get and selectFirst or think about why each is necessary
 -- TODO figure out correct type signature
 --trySqlGet :: (PersistEntity val) => Key val -> CoreT.ApiAction ctx val
 trySqlGet entityId = do
   mEntity <- runSQL $ P.get entityId
   case mEntity of
     Nothing -> errorJson NotFound
+    Just entity -> return entity
+
+-- strict version which crashes if it's not there
+trySqlGet' entityId = do
+  mEntity <- runSQL $ P.get entityId
+  case mEntity of
+    Nothing -> error "I fucked up, this really value really should be there!"
+    Just entity -> return entity
+
+-- TODO simplifiy like this: trySqlSelectFirst = trySqlSelectFirstError NotFound
+trySqlSelectFirst identifier entityId = do
+  mEntity <- runSQL $ P.selectFirst [identifier ==. entityId] []
+  case mEntity of
+    Nothing -> errorJson NotFound
+    Just entity -> return entity
+
+-- strict version which crashes if it's not there
+trySqlSelectFirst' identifier entityId = do
+  mEntity <- runSQL $ P.selectFirst [identifier ==. entityId] []
+  case mEntity of
+    Nothing -> error "I fucked up, this really value really should be there!"
+    Just entity -> return entity
+
+trySqlSelectFirstError errStatus identifier entityId = do
+  mEntity <- runSQL $ P.selectFirst [identifier ==. entityId] []
+  case mEntity of
+    Nothing -> errorJson errStatus
     Just entity -> return entity

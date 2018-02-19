@@ -13,7 +13,6 @@ module Web.Endpoints.Users where
 import qualified Config                       as Cfg
 import           Control.Monad.IO.Class
 import           Data.HVect                   (HVect, ListContains, findFirst)
-import           Data.Maybe
 import           Data.Text                    (Text)
 import           Database.Persist             hiding (delete, get)
 import qualified Database.Persist             as P
@@ -42,11 +41,8 @@ returnUserById :: Maybe (Key SqlT.User) -> ApiAction ctx m
 returnUserById Nothing =
   -- TODO combine with registration... because this function is also called once when there is no registration happening
   Util.errorJson Util.UserEmailExists
-returnUserById (Just userId ) = do
-  maybeUser <- runSQL $ P.selectFirst [SqlT.UserId ==. userId] []  -- TODO use Util.trySqlGet
-  fromMaybe
-    (errorJson Util.NotFound)
-    (json . JsonUser.jsonUser <$> maybeUser)
+returnUserById (Just userId) =
+  Util.trySqlSelectFirst SqlT.UserId userId >>= json . JsonUser.jsonUser
 
 getUsersAction :: ApiAction ctx a
 getUsersAction =
@@ -60,53 +56,35 @@ deleteUserAction userId = do
 postUsersAction :: Cfg.FlatrCfg -> JsonRegistration.Registration -> ApiAction ctx a
 postUsersAction cfg registration
   | Just code <- JsonRegistration.invitationCode registration = do
-      maybeInvitation <- runSQL $ P.selectFirst
-        [SqlT.InvitationCode ==. Just code] []
-      case maybeInvitation of
-        Nothing ->
-          errorJson Util.InvitationCodeInvalid  -- code not in DB
-        Just (Entity invitationId theInvitation) -> do
-          let email = SqlT.invitationEmail theInvitation
-          -- check if user exists
-          maybeUser <- runSQL $ P.selectFirst [SqlT.UserEmail ==. email] []
-          case maybeUser of
-            Just _user ->
-              Util.errorJson Util.UserEmailExists
-            Nothing -> do
-              -- remove Invitation after it has been used
-              runSQL $ P.delete invitationId
-              setStatus created201
-              gen <- liftIO getStdGen
-              newId <- registerUser registration gen email True
-              returnUserById newId
-  | otherwise = do
+      -- fails if user provided code but code is not in DB
+      (Entity invitationId theInvitation) <- Util.trySqlSelectFirstError Util.InvitationCodeInvalid SqlT.InvitationCode $ Just code
+      let email = SqlT.invitationEmail theInvitation
+      -- fails if user exists
+      _user <- Util.trySqlSelectFirstError Util.UserEmailExists SqlT.UserEmail email
+      -- remove Invitation after it has been used
+      runSQL $ P.delete invitationId
+      setStatus created201
       gen <- liftIO getStdGen
-      case JsonRegistration.email registration of
-        Just email ->
-          if email `elem` Cfg.whitelistedMails cfg then do
-            setStatus created201
-            newId <- registerUser registration gen email True
-            returnUserById newId
-          else do
-            maybeInvitation <- runSQL $ P.selectFirst [SqlT.InvitationEmail ==. email] []
-            case maybeInvitation of
-              Just (Entity _invitationId _invitation) -> do
-                -- check if user exists
-                maybeUser <- runSQL $ P.selectFirst [SqlT.UserEmail ==. email] []
-                case maybeUser of
-                  Just _user ->
-                    Util.errorJson Util.UserEmailExists
-                  Nothing ->
-                    -- TODO send verification Email if smtp config set
-                    -- $frontedUrl/#signup?code=$code&serverUrl=$serverUrl
-                    registerUser registration gen email False
-                      >>= returnUserById
-              Nothing ->
-                -- User provided only email but is not invited
-                Util.errorJson Util.NotInvited
-        Nothing ->
-          -- User should provide at least code or email
-          Util.errorJson $ Util.BadRequest "Either one of [ 'code', 'email' ] has to be provided"
+      newId <- registerUser registration gen email True
+      returnUserById newId
+
+  | Just email <- JsonRegistration.email registration = do  -- no invitationCode provided
+      gen <- liftIO getStdGen
+      if email `elem` Cfg.whitelistedMails cfg then do
+        setStatus created201
+        newId <- registerUser registration gen email True
+        returnUserById newId
+      else do
+        -- fails if user provided email but is not invited
+        _inv <- Util.trySqlSelectFirstError Util.NotInvited SqlT.InvitationEmail email
+        -- fails if user exists
+        _user <- Util.trySqlSelectFirstError Util.UserEmailExists SqlT.UserEmail email
+        -- TODO send verification Email if smtp config set
+        -- $frontedUrl/#signup?code=$code&serverUrl=$serverUrl
+        registerUser registration gen email False >>= returnUserById
+
+  | otherwise = -- User should provide at least code or email
+      Util.errorJson $ Util.BadRequest "Either one of [ 'code', 'email' ] has to be provided"
 
 -- TODO check that user is not there
 registerUser :: JsonRegistration.Registration
@@ -133,7 +111,4 @@ registerUser registration gen mail verified = runSQL $ insertUnique user
 currentUserAction :: ListContains n Email xs => ApiAction (HVect xs) a
 currentUserAction = do
   (email :: Text) <- fmap findFirst getContext
-  maybeUser <- Util.runSQL $ P.selectFirst [SqlT.UserEmail ==. email] []  -- TODO use Util.trySqlGet
-  case JsonUser.jsonUser <$> maybeUser of
-    Nothing -> Util.errorJson Util.NotFound  -- shouldn't really happen
-    Just theUser -> json theUser
+  Util.trySqlSelectFirst' SqlT.UserEmail email >>= json . JsonUser.jsonUser
