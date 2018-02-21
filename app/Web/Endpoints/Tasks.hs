@@ -7,6 +7,7 @@
 
 module Web.Endpoints.Tasks where
 
+import           Control.Monad             ((<=<))
 import           Control.Monad.IO.Class
 import qualified Data.Text                 as T
 import           Data.Time.Clock
@@ -28,8 +29,8 @@ import qualified Util
 routeTasks :: Api ctx
 routeTasks = do
   get "tasks" getTasksAction
-  get ("tasks" <//> var) $ \taskId ->  -- TODO use Kleisli combinator >=>
-    Util.trySqlSelectFirst SqlT.TaskId taskId >>= getTaskAction
+  get ("tasks" <//> var) $
+    getTaskAction <=< Util.trySqlSelectFirst SqlT.TaskId
   delete ("tasks" <//> var) $ \taskId ->
     Util.trySqlGet taskId >> deleteTaskAction taskId
   post ("tasks" <//> var <//> "finish") $ \taskId ->

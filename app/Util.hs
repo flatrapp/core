@@ -58,9 +58,8 @@ hashPassword :: T.Text -> BS.ByteString -> T.Text
 hashPassword password salt =
      makeHex . SHA.finalize $ SHA.updates SHA.init [salt, E.encodeUtf8 password]
 
-runSQL
-  :: (HasSpock m, SpockConn m ~ SqlBackend)
-  => SqlPersistT (LoggingT IO) a -> m a
+runSQL :: (HasSpock m, SpockConn m ~ SqlBackend)
+       => SqlPersistT (LoggingT IO) a -> m a
 runSQL action = runQuery $ \conn -> runStdoutLoggingT $ runSqlConn action conn
 
 data JsonError
@@ -90,7 +89,7 @@ errorJson err = do
     ]
   where
     (code, msg) = (T.pack *** T.pack) strs
-    (status, strs) = (conv' err)
+    (status, strs) = conv' err
 
     conv' :: JsonError -> (Status, (String, String))
     conv' CredentialsWrong      = (unauthorized401, ("credentials_wrong", "User does not exist or password is wrong."))
@@ -115,7 +114,6 @@ maybeTuple (Just a) (Just b) = Just (a, b)
 integerKey :: (Num n, ToBackendKey SqlBackend record) => Key record -> n
 integerKey = fromIntegral . fromSqlKey
 
-
 showText :: (Show a) => a -> T.Text
 showText = T.pack . show
 
@@ -123,13 +121,6 @@ emptyResponse :: CoreT.ApiAction ctx a
 emptyResponse = do
   setStatus noContent204
   bytes BS.empty
-
---eitherJsonBody :: (FromJSON a) => CoreT.ApiAction ctx (Either T.Text a)
---eitherJsonBody = do
---  b <- body
---  return $ case eitherDecodeStrict' b of  -- TODO mapLeft
---    Left err -> Left $ T.pack err
---    Right val -> Right val
 
 eitherJsonBody :: (FromJSON a) => CoreT.ApiAction ctx a
 eitherJsonBody = do
@@ -144,8 +135,11 @@ eitherJsonBody = do
       return val
 
 -- TODO combine get and selectFirst or think about why each is necessary
--- TODO figure out correct type signature
---trySqlGet :: (PersistEntity val) => Key val -> CoreT.ApiAction ctx val
+-- TODO figure out a better type signature for all trySql methods
+trySqlGet :: (P.PersistEntityBackend b ~ SqlBackend
+             , SpockConn (ActionCtxT ctx m) ~ SqlBackend, MonadIO m
+             , P.PersistEntity b, HasSpock (ActionCtxT ctx m)
+             ) => Key b -> ActionCtxT ctx m b
 trySqlGet entityId = do
   mEntity <- runSQL $ P.get entityId
   case mEntity of
@@ -153,26 +147,47 @@ trySqlGet entityId = do
     Just entity -> return entity
 
 -- strict version which crashes if it's not there
+trySqlGet' :: ( P.PersistEntityBackend b ~ SqlBackend, SpockConn m ~ SqlBackend
+              , P.PersistEntity b, HasSpock m, Monad m
+              ) => Key b -> m b
 trySqlGet' entityId = do
   mEntity <- runSQL $ P.get entityId
   case mEntity of
     Nothing -> error "I fucked up, this really value really should be there!"
     Just entity -> return entity
 
--- TODO simplifiy like this: trySqlSelectFirst = trySqlSelectFirstError NotFound
-trySqlSelectFirst identifier entityId = do
-  mEntity <- runSQL $ P.selectFirst [identifier ==. entityId] []
-  case mEntity of
-    Nothing -> errorJson NotFound
-    Just entity -> return entity
+trySqlSelectFirst :: ( P.PersistEntityBackend record ~ SqlBackend
+                     , SpockConn (ActionCtxT ctx m) ~ SqlBackend
+                     , P.PersistField typ
+                     , MonadIO m
+                     , P.PersistEntity record
+                     , HasSpock (ActionCtxT ctx m)
+                     ) => P.EntityField record typ
+                       -> typ
+                       -> ActionCtxT ctx m (P.Entity record)
+trySqlSelectFirst = trySqlSelectFirstError NotFound
 
 -- strict version which crashes if it's not there
+trySqlSelectFirst' :: ( P.PersistEntityBackend record ~ SqlBackend
+                      , SpockConn m ~ SqlBackend , P.PersistField typ
+                      , P.PersistEntity record, HasSpock m, Monad m
+                      ) => P.EntityField record typ -> typ -> m (P.Entity record)
 trySqlSelectFirst' identifier entityId = do
   mEntity <- runSQL $ P.selectFirst [identifier ==. entityId] []
   case mEntity of
     Nothing -> error "I fucked up, this really value really should be there!"
     Just entity -> return entity
 
+trySqlSelectFirstError :: ( P.PersistEntityBackend record ~ SqlBackend
+                          , SpockConn (ActionCtxT ctx m) ~ SqlBackend
+                          , P.PersistField typ
+                          , MonadIO m
+                          , P.PersistEntity record
+                          , HasSpock (ActionCtxT ctx m)
+                          ) => JsonError
+                            -> P.EntityField record typ
+                            -> typ
+                            -> ActionCtxT ctx m (P.Entity record)
 trySqlSelectFirstError errStatus identifier entityId = do
   mEntity <- runSQL $ P.selectFirst [identifier ==. entityId] []
   case mEntity of

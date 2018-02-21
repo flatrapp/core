@@ -34,9 +34,9 @@ routeAuth = post "auth" $ eitherJsonBody >>= postAuthAction
 
 postAuthAction :: LoginCredentials -> ApiAction ctx a
 postAuthAction loginCredentials = do
-  (Entity userId user) <- trySqlSelectFirstError CredentialsWrong
-                                                 SqlT.UserEmail
-                                                 (email loginCredentials)
+  Entity userId user <- trySqlSelectFirstError CredentialsWrong
+                                               SqlT.UserEmail
+                                             $ email loginCredentials
   let hashedPw = Util.hashPassword (password loginCredentials)
                                    (Util.decodeHex . SqlT.userSalt $ user)
   if hashedPw /= SqlT.userPassword user then
