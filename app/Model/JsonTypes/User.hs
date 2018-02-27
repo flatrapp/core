@@ -28,7 +28,7 @@ jsonUser (Entity userId user) =
          , email         = SqlT.userEmail user
          , firstName     = SqlT.userFirstName user
          , lastName      = SqlT.userLastName user
-         , emailVerified = SqlT.userVerified user
+         , emailVerified = SqlT.userIsVerified user
          , disabled      = SqlT.userDisabled user
          , absent        = SqlT.userAbsent user
          }

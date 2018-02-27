@@ -12,7 +12,8 @@ module Web.Endpoints.Users where
 
 import qualified Config                       as Cfg
 import           Control.Monad.IO.Class
-import           Data.HVect                   (HVect, ListContains, findFirst)
+import           Crypto.Random                (getRandomBytes)
+import           Data.HVect                   (HVect, ListContains)
 import           Data.Text                    (Text)
 import           Database.Persist             hiding (delete, get)
 import qualified Database.Persist             as P
@@ -22,14 +23,18 @@ import qualified Model.JsonTypes.Registration as JsonRegistration
 import qualified Model.JsonTypes.User         as JsonUser
 import           Network.HTTP.Types.Status    (created201)
 import           System.Random
-import           Util                         (errorJson, runSQL)
+import           Util                         (errorJson, runSQL, getCurrentUser)
 import qualified Util
 import           Web.Spock
 
 -- TODO restrict all endpoints to logged in users EXCEPT post "users"
 routeUsers :: Cfg.FlatrCfg -> Api ctx
 routeUsers cfg = do  -- TODO use cfg from State Monad somehow
-  get "users" getUsersAction
+  get "users" $ do
+    mCode <- param "code"
+    case mCode of
+      Nothing -> getUsersAction
+      Just code -> verifyEmailAction code -- TODO maybe simplify
   get ("users" <//> var) $ returnUserById . Just
   delete ("user" <//> var) $ \userId ->
     Util.trySqlGet userId >> deleteUserAction userId
@@ -48,6 +53,13 @@ getUsersAction :: ApiAction ctx a
 getUsersAction =
   json =<< (map JsonUser.jsonUser <$> runSQL (selectList [] [Asc SqlT.UserId]))
 
+verifyEmailAction :: Text -> ApiAction ctx a
+verifyEmailAction code = do
+  (Entity userId _user) <- Util.trySqlSelectFirstError Util.VerificationCodeInvalid SqlT.UserVerifyCode $ Just code
+  runSQL $ P.updateWhere [SqlT.UserId ==. userId]
+                         [SqlT.UserVerifyCode =. Nothing]
+  returnUserById $ Just userId
+
 deleteUserAction :: SqlT.UserId -> ApiAction ctx a
 deleteUserAction userId = do
   runSQL $ P.delete userId
@@ -65,23 +77,24 @@ postUsersAction cfg registration
       runSQL $ P.delete invitationId
       setStatus created201
       gen <- liftIO getStdGen
-      newId <- registerUser registration gen email True
+      newId <- registerUser registration gen email Nothing
       returnUserById newId
 
   | Just email <- JsonRegistration.email registration = do  -- no invitationCode provided
       gen <- liftIO getStdGen
       if email `elem` Cfg.whitelistedMails cfg then do
         setStatus created201
-        newId <- registerUser registration gen email True
+        newId <- registerUser registration gen email Nothing
         returnUserById newId
       else do
         -- fails if user provided email but is not invited
         _inv <- Util.trySqlSelectFirstError Util.NotInvited SqlT.InvitationEmail email
         -- fails if user exists
         _user <- Util.trySqlSelectFirstError Util.UserEmailExists SqlT.UserEmail email
+        verificationCode <- Util.makeHex <$> liftIO (getRandomBytes 10)
         -- TODO send verification Email if smtp config set
         -- $frontedUrl/#signup?code=$code&serverUrl=$serverUrl
-        registerUser registration gen email False >>= returnUserById
+        registerUser registration gen email (Just verificationCode) >>= returnUserById
 
   | otherwise = -- User should provide at least code or email
       Util.errorJson $ Util.BadRequest "Either one of [ 'code', 'email' ] has to be provided"
@@ -90,25 +103,24 @@ postUsersAction cfg registration
 registerUser :: JsonRegistration.Registration
              -> StdGen
              -> Email
-             -> Bool
+             -> Maybe Text
              -> ApiAction ctx (Maybe (Key SqlT.User))
-registerUser registration gen mail verified = runSQL $ insertUnique user
+registerUser registration gen mail verificationCode = runSQL $ insertUnique user
     where user = SqlT.User
-                    { SqlT.userEmail     = mail
-                    , SqlT.userPassword  = hashedSaltedPassword
-                    , SqlT.userSalt      = Util.makeHex salt'
-                    , SqlT.userFirstName = JsonRegistration.firstName registration
-                    , SqlT.userLastName  = JsonRegistration.lastName registration
-                    , SqlT.userVerified  = verified
-                    , SqlT.userDisabled  = False
-                    , SqlT.userAbsent    = JsonRegistration.absent registration
-                    }
+                  { SqlT.userEmail      = mail
+                  , SqlT.userPassword   = hashedSaltedPassword
+                  , SqlT.userSalt       = Util.makeHex salt'
+                  , SqlT.userFirstName  = JsonRegistration.firstName registration
+                  , SqlT.userLastName   = JsonRegistration.lastName registration
+                  , SqlT.userVerifyCode = verificationCode
+                  , SqlT.userDisabled   = False
+                  , SqlT.userAbsent     = JsonRegistration.absent registration
+                  }
           pw = JsonRegistration.password registration
           salt' = Util.randomBS 512 gen
           hashedSaltedPassword = Util.hashPassword pw salt'
 
 
 currentUserAction :: ListContains n Email xs => ApiAction (HVect xs) a
-currentUserAction = do
-  (email :: Text) <- fmap findFirst getContext
-  Util.trySqlSelectFirst' SqlT.UserEmail email >>= json . JsonUser.jsonUser
+currentUserAction =
+  Util.getCurrentUser >>= json . JsonUser.jsonUser

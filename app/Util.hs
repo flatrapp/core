@@ -17,6 +17,7 @@ import           Data.Aeson                ( FromJSON
                                            )
 import qualified Data.ByteString           as BS
 import qualified Data.ByteString.Base16    as B16
+import           Data.HVect                (HVect, ListContains, findFirst)
 import qualified Data.Text                 as T
 import qualified Data.Text.Encoding        as E
 import qualified Data.Word8
@@ -30,6 +31,7 @@ import           Database.Persist.Sqlite   ( SqlBackend
                                            , fromSqlKey
                                            )
 import qualified Model.CoreTypes           as CoreT
+import qualified Model.SqlTypes            as SqlT
 import           Network.HTTP.Types.Status
 import           Prelude                   hiding (length)
 import           System.Random
@@ -69,6 +71,7 @@ data JsonError
   | NotFound
   | EmailNotVerified
   | InvitationCodeInvalid
+  | VerificationCodeInvalid
   | NotInvited
   | UserEmailExists
   | InvitationEmailExists
@@ -92,16 +95,17 @@ errorJson err = do
     (status, strs) = conv' err
 
     conv' :: JsonError -> (Status, (String, String))
-    conv' CredentialsWrong      = (unauthorized401, ("credentials_wrong", "User does not exist or password is wrong."))
-    conv' Unauthorized          = (unauthorized401, ("unauthorized", "You are not authorized to access this resource."))
-    conv' (BadRequest errorMsg) = (badRequest400,   ("bad_request", errorMsg))
-    conv' NotFound              = (notFound404,     ("not_found", "The requested resource could not be found."))
-    conv' EmailNotVerified      = (forbidden403,    ("email_not_verified", "You have not verified your email address yet."))
-    conv' InvitationCodeInvalid = (forbidden403,    ("invitation_code_invalid", "This is not a valid invitation code."))
-    conv' NotInvited            = (forbidden403,    ("not_invited", "Your email address is not invited."))
-    conv' UserEmailExists       = (conflict409,     ("user_email_exists", "A user with this email address already exists."))
-    conv' InvitationEmailExists = (conflict409,     ("invitation_email_exists", "An invitation with this email address already exists."))
-    conv' UserDisabled          = (forbidden403,    ("user_disabled", "This user is disabled and has to be enabled before being able to log in."))
+    conv' CredentialsWrong        = (unauthorized401, ("credentials_wrong", "User does not exist or password is wrong."))
+    conv' Unauthorized            = (unauthorized401, ("unauthorized", "You are not authorized to access this resource."))
+    conv' (BadRequest errorMsg)   = (badRequest400,   ("bad_request", errorMsg))
+    conv' NotFound                = (notFound404,     ("not_found", "The requested resource could not be found."))
+    conv' EmailNotVerified        = (forbidden403,    ("email_not_verified", "You have not verified your email address yet."))
+    conv' InvitationCodeInvalid   = (forbidden403,    ("invitation_code_invalid", "This is not a valid invitation code."))
+    conv' VerificationCodeInvalid = (forbidden403,    ("verification_code_invalid", "Your email address could not be verified with this code."))
+    conv' NotInvited              = (forbidden403,    ("not_invited", "Your email address is not invited."))
+    conv' UserEmailExists         = (conflict409,     ("user_email_exists", "A user with this email address already exists."))
+    conv' InvitationEmailExists   = (conflict409,     ("invitation_email_exists", "An invitation with this email address already exists."))
+    conv' UserDisabled            = (forbidden403,    ("user_disabled", "This user is disabled and has to be enabled before being able to log in."))
 
 maybeToEither :: a -> Maybe b -> Either a b
 maybeToEither = flip maybe Right . Left
@@ -193,3 +197,12 @@ trySqlSelectFirstError errStatus identifier entityId = do
   case mEntity of
     Nothing -> errorJson errStatus
     Just entity -> return entity
+
+getCurrentUser :: ListContains n CoreT.Email xs
+                  => ActionCtxT
+                     (HVect xs)
+                     (WebStateM SqlBackend () ())
+                     (P.Entity SqlT.User)
+getCurrentUser = do
+  email <- fmap findFirst getContext
+  Util.trySqlSelectFirst' SqlT.UserEmail email

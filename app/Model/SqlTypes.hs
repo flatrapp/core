@@ -9,6 +9,7 @@
 
 module Model.SqlTypes where
 
+import           Data.Maybe              (isJust)
 import           Data.Text               (Text)
 import           Data.Time.Clock         (UTCTime)
 import           Database.Persist.Sqlite
@@ -18,14 +19,14 @@ import           Model.CoreTypes         (Email)
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 User json
-  email     Email
-  password  Text
-  salt      Text
-  firstName Text
-  lastName  Text
-  verified  Bool
-  disabled  Bool
-  absent  Bool
+  email      Email
+  password   Text
+  salt       Text
+  firstName  Text
+  lastName   Text
+  verifyCode Text Maybe
+  disabled   Bool
+  absent     Bool
 
   UniqueUserEmail email
 
@@ -63,3 +64,6 @@ Invitation json
 
   UniqueInvitationEmail email
 |]
+
+userIsVerified :: User -> Bool
+userIsVerified = isJust . userVerifyCode

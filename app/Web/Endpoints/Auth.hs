@@ -41,7 +41,7 @@ postAuthAction loginCredentials = do
                                    (Util.decodeHex . SqlT.userSalt $ user)
   if hashedPw /= SqlT.userPassword user then
     errorJson CredentialsWrong
-  else if not $ SqlT.userVerified user then
+  else if not $ SqlT.userIsVerified user then
     errorJson EmailNotVerified
   else if SqlT.userDisabled user then
     errorJson UserDisabled
