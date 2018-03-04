@@ -2,26 +2,25 @@
 
 module Model.JsonTypes.Invitation where
 
-import           Data.Aeson           hiding (json)
+import           Data.Aeson           (ToJSON)
 import           Data.Text            (Text)
-import           Database.Persist.Sql
-import           GHC.Generics
+import           Database.Persist.Sql (Entity(..))
+import           GHC.Generics         (Generic)
 import qualified Model.SqlTypes       as SqlT
 import           Prelude              hiding (id)
-import           Util
+import qualified Util
 
 data Invitation =
-     Invitation { id             :: Maybe Integer
+     Invitation { id             :: Integer
                 , email          :: Text
-                , invitationCode :: Maybe Text
+                , invitationCode :: Text
                 } deriving (Show, Generic)
 
 instance ToJSON Invitation
-instance FromJSON Invitation
 
 jsonInvitation :: Entity SqlT.Invitation -> Invitation
 jsonInvitation (Entity invitationId invitation) =
-    Invitation { id             = Just $ Util.integerKey invitationId
+    Invitation { id             = Util.integerKey invitationId
                , email          = SqlT.invitationEmail invitation
                , invitationCode = SqlT.invitationCode invitation
                }

@@ -2,9 +2,9 @@
 
 module Model.JsonTypes.User where
 
-import           Data.Aeson           hiding (json)
+import           Data.Aeson           (ToJSON)
 import           Data.Text            (Text)
-import           Database.Persist.Sql
+import           Database.Persist.Sql (Entity(..))
 import           GHC.Generics
 import qualified Model.SqlTypes       as SqlT
 import           Prelude              hiding (id)

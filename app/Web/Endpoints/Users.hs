@@ -69,7 +69,7 @@ postUsersAction :: Cfg.FlatrCfg -> JsonRegistration.Registration -> ApiAction ct
 postUsersAction cfg registration
   | Just code <- JsonRegistration.invitationCode registration = do
       -- fails if user provided code but code is not in DB
-      (Entity invitationId theInvitation) <- Util.trySqlSelectFirstError Util.InvitationCodeInvalid SqlT.InvitationCode $ Just code
+      (Entity invitationId theInvitation) <- Util.trySqlSelectFirstError Util.InvitationCodeInvalid SqlT.InvitationCode code
       let email = SqlT.invitationEmail theInvitation
       -- fails if user exists
       _user <- Util.trySqlSelectFirstError Util.UserEmailExists SqlT.UserEmail email

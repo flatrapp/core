@@ -7,18 +7,18 @@
 
 module Web.Endpoints.Invitation where
 
-import           Control.Monad.IO.Class
-import           Crypto.Random
-import qualified Data.Text                  as T
-import           Database.Persist           hiding (delete, get)
-import qualified Database.Persist           as P
-import           Network.HTTP.Types.Status  (created201)
-import           Text.Printf
+import           Control.Monad.IO.Class       (liftIO)
+import           Crypto.Random                (getRandomBytes)
+import qualified Data.Text                    as T
+import qualified Database.Persist             as P
+import           Network.HTTP.Types.Status    (created201)
+import           Text.Printf                  (printf)
 import           Web.Spock
-import           Model.CoreTypes            (ApiAction, Api)
-import qualified Model.SqlTypes             as SqlT
-import qualified Model.JsonTypes.Invitation as JsonInvitation
-import           Util                       (errorJson, runSQL)
+import           Model.CoreTypes              (ApiAction, Api)
+import qualified Model.SqlTypes               as SqlT
+import qualified Model.JsonTypes.Invitation   as JsonInvitation
+import qualified Model.JsonTypes.InvitationIn as JsonInvitationIn
+import           Util                         (errorJson, runSQL)
 import qualified Util
 
 -- TODO restrict all endpoints to logged in users
@@ -33,7 +33,7 @@ routeInvitations = do
 
 getInvitationsAction :: ApiAction ctx a
 getInvitationsAction = do
-  allInvitations <- runSQL $ selectList [] [Asc SqlT.InvitationId]
+  allInvitations <- runSQL $ P.selectList [] [P.Asc SqlT.InvitationId]
   json $ map JsonInvitation.jsonInvitation allInvitations
 
 deleteInvitationAction :: SqlT.InvitationId -> ApiAction ctx a
@@ -41,17 +41,17 @@ deleteInvitationAction invitationId = do
   runSQL $ P.delete invitationId
   Util.emptyResponse
 
-resendInvitation :: Entity SqlT.Invitation -> ApiAction ctx a
+resendInvitation :: P.Entity SqlT.Invitation -> ApiAction ctx a
 resendInvitation =
   -- TODO resend invitation mail
   json . JsonInvitation.jsonInvitation
 
-postInvitationAction :: JsonInvitation.Invitation -> ApiAction ctx a
+postInvitationAction :: JsonInvitationIn.Invitation -> ApiAction ctx a
 postInvitationAction invitation = do
   invitationCode <- Util.makeHex <$> liftIO (getRandomBytes 10)
-  maybeInvitationId <- runSQL $ insertUnique
-    SqlT.Invitation { SqlT.invitationEmail = JsonInvitation.email invitation
-                    , SqlT.invitationCode  = Just invitationCode
+  maybeInvitationId <- runSQL $ P.insertUnique
+    SqlT.Invitation { SqlT.invitationEmail = JsonInvitationIn.email invitation
+                    , SqlT.invitationCode  = invitationCode
                     }
   case maybeInvitationId of
     Nothing ->

@@ -2,10 +2,10 @@
 
 module Model.JsonTypes.Info where
 
-import           Data.Aeson      hiding (json)
+import           Data.Aeson      (ToJSON)
 import           Data.Text       (Text)
 import           Data.Time.Clock (UTCTime)
-import           GHC.Generics
+import           GHC.Generics    (Generic)
 
 data Info =
      Info { version     :: Text

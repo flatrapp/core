@@ -59,7 +59,7 @@ Task json
 
 Invitation json
   email Email
-  code  Text Maybe
+  code  Text
   deriving Show
 
   UniqueInvitationEmail email

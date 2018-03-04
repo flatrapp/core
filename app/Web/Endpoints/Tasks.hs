@@ -21,6 +21,7 @@ import           Web.Spock                 hiding (head)
 import           Model.CoreTypes           (ApiAction, Api)
 import qualified Model.SqlTypes            as SqlT
 import qualified Model.JsonTypes.Task      as JsonTask
+import qualified Model.JsonTypes.TaskIn    as JsonTaskIn
 import qualified Model.JsonTypes.Turn      as JsonTurn
 import           Util                      (runSQL)
 import qualified Util
@@ -78,38 +79,37 @@ finishTaskAction taskId = do
     [SqlT.TurnFinishedAt =. Just currentTime]
   Util.emptyResponse
 
-putTaskAction :: SqlT.TaskId -> JsonTask.Task -> ApiAction ctx a
+putTaskAction :: SqlT.TaskId -> JsonTaskIn.Task -> ApiAction ctx a
 -- TODO combine with postTaskAction
--- TODO maybe to JsonTask.Task with argument pattern matching as well
+-- TODO maybe to JsonTaskIn.Task with argument pattern matching as well
 putTaskAction taskId task = do
   _task <- Util.trySqlGet taskId  -- we just want to check if it is there TODO maybe think of something better
   runSQL $ P.replace taskId SqlT.Task {
-        SqlT.taskTitle          = JsonTask.title task
-      , SqlT.taskDescription    = JsonTask.description task
-      , SqlT.taskFrequency      = JsonTask.frequency task
-      , SqlT.taskCompletionTime = JsonTask.completionTime task  -- TODO assert than cannot be negative
+        SqlT.taskTitle          = JsonTaskIn.title task
+      , SqlT.taskDescription    = JsonTaskIn.description task
+      , SqlT.taskFrequency      = JsonTaskIn.frequency task
+      , SqlT.taskCompletionTime = JsonTaskIn.completionTime task
       }
   returnNewTask taskId
 
-postTasksAction :: JsonTask.Task -> ApiAction ctx a
+postTasksAction :: JsonTaskIn.Task -> ApiAction ctx a
 postTasksAction task = do
   -- post actual Task
   taskId <- runSQL $ insert SqlT.Task {
-        SqlT.taskTitle          = JsonTask.title task
-      , SqlT.taskDescription    = JsonTask.description task
-      , SqlT.taskFrequency      = JsonTask.frequency task
-      , SqlT.taskCompletionTime = JsonTask.completionTime task  -- TODO assert than cannot be negative
+        SqlT.taskTitle          = JsonTaskIn.title task
+      , SqlT.taskDescription    = JsonTaskIn.description task
+      , SqlT.taskFrequency      = JsonTaskIn.frequency task
+      , SqlT.taskCompletionTime = JsonTaskIn.completionTime task
       }
   -- post new TaskUsers
   currentTime <- liftIO getCurrentTime
-  let users = JsonTask.users task
-  let insertIt userId = runSQL $ insertUnique SqlT.TaskUser {
+  let users = JsonTaskIn.users task  -- non emptiness is assured by JSON parsing
+  let insertIt userId = runSQL $ insertUnique SqlT.TaskUser {  -- TODO check if user exists
         SqlT.taskUserTaskId = taskId
       , SqlT.taskUserUserId = PSql.toSqlKey . fromInteger $ userId
       }
   _ <- mapM insertIt users -- TODO check return value including Maybes
   -- post initial Turn
-  -- TODO check if users is empty
   _turnId <- runSQL $ insert SqlT.Turn {
         SqlT.turnUserId     = PSql.toSqlKey . fromInteger . Prelude.head $ users
       , SqlT.turnTaskId     = taskId
