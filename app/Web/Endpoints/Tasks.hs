@@ -13,6 +13,7 @@ import           Data.Maybe                (fromJust, listToMaybe, fromMaybe)
 import           Data.List                 ((\\))
 import qualified Data.Text                 as T
 import           Data.Time.Clock
+import qualified Database.Esqueleto        as E
 import           Database.Persist          hiding (delete, get)
 import qualified Database.Persist          as P
 import qualified Database.Persist.Sql      as PSql
@@ -138,12 +139,14 @@ updateTaskTurns users (Entity taskId task) = do
                           , SqlT.TurnFinishedAt !=. Nothing
                           ]
                           [ Asc SqlT.TurnStartDate ]
-  taskUsers :: [Key SqlT.User] <-
-    runSQL $ PSql.rawSql
-      "SELECT turn.user_id FROM task_user \
-      \JOIN turn ON task_user.task_id = turn.task_id \
-      \ORDER BY turn.start_date DESC"
-      []
+  taskUsersValue :: [E.Value (Key SqlT.User)] <-
+    runSQL $ E.select $
+             E.from $ \(taskUser `E.InnerJoin` turn) -> do
+             E.on (  taskUser E.^. SqlT.TaskUserTaskId
+                   E.==. turn E.^. SqlT.TurnTaskId)
+             E.orderBy [E.desc (turn E.^. SqlT.TurnStartDate)]
+             return (turn E.^. SqlT.TurnUserId)
+  let taskUsers :: [Key SqlT.User] = map E.unValue taskUsersValue  -- TODO incorporate in line above with fmapping
   when (null unfinishedTurns) $
     void . runSQL $ insert SqlT.Turn {
          SqlT.turnUserId     = nextUser taskUsers
