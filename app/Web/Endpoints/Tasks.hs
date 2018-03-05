@@ -7,8 +7,10 @@
 
 module Web.Endpoints.Tasks where
 
-import           Control.Monad             ((<=<))
+import           Control.Monad             ((<=<), when, void)
 import           Control.Monad.IO.Class
+import           Data.Maybe                (fromJust)
+import           Data.List                 ((\\))
 import qualified Data.Text                 as T
 import           Data.Time.Clock
 import           Database.Persist          hiding (delete, get)
@@ -36,6 +38,7 @@ routeTasks = do
     Util.trySqlGet taskId >> deleteTaskAction taskId
   post ("tasks" <//> var <//> "finish") $ \taskId ->
     Util.trySqlSelectFirst SqlT.TurnTaskId taskId >> finishTaskAction taskId
+  post ("tasks" <//> "update") updateTurnsAction
   put ("tasks" <//> var) $ \taskId ->
     Util.eitherJsonBody >>= putTaskAction taskId
   post "tasks" $ Util.eitherJsonBody >>= postTasksAction
@@ -102,21 +105,61 @@ postTasksAction task = do
       , SqlT.taskCompletionTime = JsonTaskIn.completionTime task
       }
   -- post new TaskUsers
-  currentTime <- liftIO getCurrentTime
   let users = JsonTaskIn.users task  -- non emptiness is assured by JSON parsing
   let insertIt userId = runSQL $ insertUnique SqlT.TaskUser {  -- TODO check if user exists
         SqlT.taskUserTaskId = taskId
       , SqlT.taskUserUserId = PSql.toSqlKey . fromInteger $ userId
       }
   _ <- mapM insertIt users -- TODO check return value including Maybes
-  -- post initial Turn
-  _turnId <- runSQL $ insert SqlT.Turn {
-        SqlT.turnUserId     = PSql.toSqlKey . fromInteger . Prelude.head $ users
-      , SqlT.turnTaskId     = taskId
-      , SqlT.turnStartDate  = addUTCTime (1800::NominalDiffTime) currentTime  -- TODO something smart
-      , SqlT.turnFinishedAt = Nothing
-      }
+  updateTurns
   returnNewTask taskId
+
+updateTurnsAction :: ApiAction ctx a
+updateTurnsAction = do
+  updateTurns
+  Util.emptyResponse
+
+updateTurns :: ApiAction ctx ()
+updateTurns = do
+  users <- runSQL $ P.selectList [ SqlT.UserDisabled ==. False ] []
+  let userIds = map (\(Entity key _val) -> key) users
+  tasks :: [Entity SqlT.Task] <- runSQL $ P.selectList [] []
+  mapM_ (updateTaskTurns userIds) tasks
+
+updateTaskTurns :: [Key SqlT.User] -> Entity SqlT.Task -> ApiAction ctx a
+updateTaskTurns users (Entity taskId task) = do
+  currentTime <- liftIO getCurrentTime
+  unfinishedTurns <-
+    runSQL $ P.selectList [ SqlT.TurnTaskId ==. taskId
+                          , SqlT.TurnFinishedAt ==. Nothing
+                          ] []
+  finishedTurns <-
+    runSQL $ P.selectList [ SqlT.TurnTaskId ==. taskId
+                          , SqlT.TurnFinishedAt !=. Nothing
+                          ]
+                          [ Asc SqlT.TurnStartDate ]
+  taskUsers :: [Key SqlT.User] <-
+    runSQL $ PSql.rawSql
+      "SELECT turn.user_id FROM task_user \
+      \JOIN turn ON task_user.task_id = turn.task_id \
+      \ORDER BY turn.start_date DESC"
+      []
+  when (null unfinishedTurns) $
+    void . runSQL $ insert SqlT.Turn {
+         SqlT.turnUserId     = nextUser taskUsers
+       , SqlT.turnTaskId     = taskId
+       , SqlT.turnStartDate  = startDate currentTime finishedTurns
+       , SqlT.turnFinishedAt = Nothing
+       }
+  Util.emptyResponse
+  where
+    nextUser taskUsers = head $ users \\ taskUsers
+    frequency = SqlT.taskFrequency task
+    -- TODO remove completionTime = SqlT.taskCompletionTime task
+    startDate currentTime [] = addUTCTime (1800::NominalDiffTime) currentTime
+    startDate _currTime (Entity _key lastTurn : _xs) =
+      addUTCTime (realToFrac frequency)
+                 (fromJust . SqlT.turnFinishedAt $ lastTurn)
 
 returnNewTask :: SqlT.TaskId -> ApiAction ctx a
 returnNewTask taskId = do
