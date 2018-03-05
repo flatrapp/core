@@ -9,7 +9,7 @@ module Web.Endpoints.Tasks where
 
 import           Control.Monad             ((<=<), when, void)
 import           Control.Monad.IO.Class
-import           Data.Maybe                (fromJust)
+import           Data.Maybe                (fromJust, listToMaybe, fromMaybe)
 import           Data.List                 ((\\))
 import qualified Data.Text                 as T
 import           Data.Time.Clock
@@ -153,13 +153,14 @@ updateTaskTurns users (Entity taskId task) = do
        }
   Util.emptyResponse
   where
-    nextUser taskUsers = head $ users \\ taskUsers
-    frequency = SqlT.taskFrequency task
-    -- TODO remove completionTime = SqlT.taskCompletionTime task
-    startDate currentTime [] = addUTCTime (1800::NominalDiffTime) currentTime
-    startDate _currTime (Entity _key lastTurn : _xs) =
-      addUTCTime (realToFrac frequency)
-                 (fromJust . SqlT.turnFinishedAt $ lastTurn)
+  -- head should never be able to fail. If taskUsers is empty `users \\ taskUsers`
+  -- will not be empty and therefore skip `head TaskUsers`
+  nextUser taskUsers = fromMaybe (head taskUsers) $ listToMaybe $ users \\ taskUsers
+  frequency = SqlT.taskFrequency task
+  startDate currentTime [] = addUTCTime (1800::NominalDiffTime) currentTime
+  startDate _currTime (Entity _key lastTurn : _xs) =
+    addUTCTime (realToFrac frequency)
+               (fromJust . SqlT.turnFinishedAt $ lastTurn)
 
 returnNewTask :: SqlT.TaskId -> ApiAction ctx a
 returnNewTask taskId = do
