@@ -3,10 +3,17 @@
 module Model.CoreTypes where
 
 import           Data.Text               (Text)
-import           Web.Spock               (SpockCtxM, SpockActionCtx)
 import           Database.Persist.Sqlite (SqlBackend)
+import           Web.Spock               (SpockCtxM, SpockActionCtx)
 
-type Api ctx = Web.Spock.SpockCtxM ctx SqlBackend () () ()
-type ApiAction ctx a = Web.Spock.SpockActionCtx ctx SqlBackend () () a
+import           Config                  (FlatrCfg)
+
+type Api ctx = SpockCtxM ctx SqlBackend () ApiState ()
+type ApiAction ctx a = SpockActionCtx ctx SqlBackend () ApiState a
 
 type Email = Text
+
+newtype ApiState
+      = ApiState
+      { apiCfg :: FlatrCfg
+      }

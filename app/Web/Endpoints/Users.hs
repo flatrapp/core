@@ -121,7 +121,5 @@ registerUser registration gen mail verificationCode = runSQL $ insertUnique user
           salt' = Util.randomBS 512 gen
           hashedSaltedPassword = Util.hashPassword pw salt'
 
-
 currentUserAction :: ListContains n Email xs => ApiAction (HVect xs) a
-currentUserAction =
-  Util.getCurrentUser >>= json . JsonUser.jsonUser
+currentUserAction = Util.getCurrentUser >>= json . JsonUser.jsonUser

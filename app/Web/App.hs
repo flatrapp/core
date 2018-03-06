@@ -60,7 +60,7 @@ secretAction = do
   (subject :: Text) <- fmap findFirst getContext
   text $ "Welome!" <> subject
 
-corsHeader :: ActionCtxT a (WebStateM SqlBackend () ()) a
+corsHeader :: ApiAction ctx ctx
 corsHeader =
   do ctx <- getContext
      setHeader "Access-Control-Allow-Origin" "*"

@@ -4,12 +4,13 @@ module Main where
 
 import           Web.Spock
 import           Web.Spock.Config
-
-import qualified Config
 import           Control.Monad.Logger    (runStdoutLoggingT)
 import           Database.Persist.Sqlite hiding (delete, get)
-import           Model.SqlTypes          (migrateAll)
 import           System.Environment
+
+import qualified Config
+import           Model.SqlTypes          (migrateAll)
+import           Model.CoreTypes         (ApiState(..))
 import           Web.App
 
 
@@ -33,7 +34,7 @@ runApp :: FilePath -> IO ()
 runApp cfgFile = do
   cfg <- Config.parseConfig cfgFile
   pool <- runStdoutLoggingT $ createSqlitePool (Config.db cfg) 5
-  spockCfg <- mySpockCfg () (PCPool pool) ()
+  spockCfg <- mySpockCfg () (PCPool pool) (ApiState cfg)
   runStdoutLoggingT $ runSqlPool (runMigration migrateAll) pool
   runSpock (Config.port cfg) (spock spockCfg (app cfg))
 
