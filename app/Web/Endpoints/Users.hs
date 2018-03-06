@@ -10,22 +10,24 @@
 
 module Web.Endpoints.Users where
 
-import qualified Config                       as Cfg
 import           Control.Monad.IO.Class
 import           Crypto.Random                (getRandomBytes)
 import           Data.HVect                   (HVect, ListContains)
 import           Data.Text                    (Text)
 import           Database.Persist             hiding (delete, get)
 import qualified Database.Persist             as P
+import           Network.HTTP.Types.Status    (created201)
+import           System.Random
+import           Web.Spock
+
+import qualified Config                       as Cfg
+import qualified Mail
 import           Model.CoreTypes              (ApiAction, Api, Email)
 import qualified Model.SqlTypes               as SqlT
 import qualified Model.JsonTypes.Registration as JsonRegistration
 import qualified Model.JsonTypes.User         as JsonUser
-import           Network.HTTP.Types.Status    (created201)
-import           System.Random
 import           Util                         (errorJson, runSQL, getCurrentUser)
 import qualified Util
-import           Web.Spock
 
 -- TODO restrict all endpoints to logged in users EXCEPT post "users"
 routeUsers :: Cfg.FlatrCfg -> Api ctx
@@ -92,8 +94,7 @@ postUsersAction cfg registration
         -- fails if user exists
         _user <- Util.trySqlSelectFirstError Util.UserEmailExists SqlT.UserEmail email
         verificationCode <- Util.makeHex <$> liftIO (getRandomBytes 10)
-        -- TODO send verification Email if smtp config set
-        -- $frontedUrl/#signup?code=$code&serverUrl=$serverUrl
+        liftIO $ Mail.sendVerificationMail cfg email verificationCode
         registerUser registration gen email (Just verificationCode) >>= returnUserById
 
   | otherwise = -- User should provide at least code or email

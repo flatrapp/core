@@ -41,6 +41,9 @@ executable Flatr-App-Core-exe
                      , regex-pcre
                      , esqueleto
                      , formatting
+                     , smtp-mail
+                     , mime-mail
+                     , network
   default-language:    Haskell2010
 
 source-repository head
