@@ -40,6 +40,7 @@ executable Flatr-App-Core-exe
                      , cryptonite
                      , regex-pcre
                      , esqueleto
+                     , formatting
   default-language:    Haskell2010
 
 source-repository head

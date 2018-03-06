@@ -11,14 +11,13 @@ import           Control.Monad             ((<=<), when, void)
 import           Control.Monad.IO.Class
 import           Data.Maybe                (fromJust, listToMaybe, fromMaybe)
 import           Data.List                 ((\\))
-import qualified Data.Text                 as T
 import           Data.Time.Clock
 import qualified Database.Esqueleto        as E
 import           Database.Persist          hiding (delete, get)
 import qualified Database.Persist          as P
 import qualified Database.Persist.Sql      as PSql
+import           Formatting                ((%), int, sformat)
 import           Network.HTTP.Types.Status (created201)
-import           Text.Printf
 import           Web.Spock                 hiding (head)
 
 import           Model.CoreTypes           (ApiAction, Api)
@@ -169,6 +168,6 @@ returnNewTask :: SqlT.TaskId -> ApiAction ctx a
 returnNewTask taskId = do
   newTask <- Util.trySqlSelectFirst' SqlT.TaskId taskId
   setStatus created201
-  let location :: T.Text = T.pack $ printf "/tasks/%d" (Util.integerKey taskId :: Integer)
+  let location = sformat ("/tasks/" % int) (Util.integerKey taskId :: Integer)
   setHeader "Location" location
   getTaskInfo json newTask

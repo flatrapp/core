@@ -9,10 +9,9 @@ module Web.Endpoints.Invitation where
 
 import           Control.Monad.IO.Class       (liftIO)
 import           Crypto.Random                (getRandomBytes)
-import qualified Data.Text                    as T
 import qualified Database.Persist             as P
+import           Formatting                   ((%), int, sformat)
 import           Network.HTTP.Types.Status    (created201)
-import           Text.Printf                  (printf)
 import           Web.Spock
 import           Model.CoreTypes              (ApiAction, Api)
 import qualified Model.SqlTypes               as SqlT
@@ -60,6 +59,6 @@ postInvitationAction invitation = do
       newInvitation <- Util.trySqlSelectFirst' SqlT.InvitationId invitationId
       -- TODO send invitation email if smtp config is set
       setStatus created201
-      let location :: T.Text = T.pack $ printf "/invitation/%d" (Util.integerKey invitationId :: Integer)
+      let location = sformat ("/invitation/" % int) (Util.integerKey invitationId :: Integer)
       setHeader "Location" location
       json . JsonInvitation.jsonInvitation $ newInvitation

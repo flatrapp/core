@@ -1,7 +1,8 @@
-{ mkDerivation, aeson, base, base16-bytestring, bytestring
+{ mkDerivation, stdenv
+, aeson, base, base16-bytestring, bytestring, formatting
 , configurator, containers, cryptohash, http-types
 , hvect, jwt, monad-logger, mtl, persistent, persistent-sqlite
-, persistent-template, random, Spock, stdenv, text, time
+, persistent-template, random, Spock, text, time
 , transformers, word8, iso8601-time, regex-pcre, esqueleto
 
 , stylish-haskell, hlint, hdevtools, ghc-mod
@@ -18,7 +19,7 @@ mkDerivation {
     aeson base base16-bytestring bytestring configurator containers
     cryptohash http-types hvect jwt monad-logger mtl persistent
     persistent-sqlite persistent-template random Spock text time
-    transformers word8 iso8601-time regex-pcre esqueleto
+    transformers word8 iso8601-time regex-pcre esqueleto formatting
 
     stylish-haskell hlint hdevtools ghc-mod
   ];
