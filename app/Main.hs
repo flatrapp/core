@@ -36,7 +36,7 @@ runApp cfgFile = do
   pool <- runStdoutLoggingT $ createSqlitePool (Config.db cfg) 5
   spockCfg <- mySpockCfg () (PCPool pool) (ApiState cfg)
   runStdoutLoggingT $ runSqlPool (runMigration migrateAll) pool
-  runSpock (Config.port cfg) (spock spockCfg (app cfg))
+  runSpock (Config.port cfg) (spock spockCfg app)
 
 mySpockCfg :: sess -> PoolOrConn conn -> st -> IO (SpockCfg conn sess st)
 mySpockCfg sess conn st =

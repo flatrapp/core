@@ -22,7 +22,7 @@ import           Web.Spock
 
 import qualified Config                       as Cfg
 import qualified Mail
-import           Model.CoreTypes              (ApiAction, Api, Email)
+import           Model.CoreTypes              (ApiAction, Api, Email, apiCfg)
 import qualified Model.SqlTypes               as SqlT
 import qualified Model.JsonTypes.Registration as JsonRegistration
 import qualified Model.JsonTypes.User         as JsonUser
@@ -30,8 +30,8 @@ import           Util                         (errorJson, runSQL, getCurrentUser
 import qualified Util
 
 -- TODO restrict all endpoints to logged in users EXCEPT post "users"
-routeUsers :: Cfg.FlatrCfg -> Api ctx
-routeUsers cfg = do  -- TODO use cfg from State Monad somehow
+routeUsers :: Api ctx
+routeUsers = do
   get "users" $ do
     mCode <- param "code"
     case mCode of
@@ -42,7 +42,7 @@ routeUsers cfg = do  -- TODO use cfg from State Monad somehow
     Util.trySqlGet userId >> deleteUserAction userId
   -- TOOD implement put "users" $ do
   post "users" $
-    Util.eitherJsonBody >>= postUsersAction cfg  -- TODO use the Nothing case as intermediate action and chain it in somehow
+    Util.eitherJsonBody >>= postUsersAction -- TODO use the Nothing case as intermediate action and chain it in somehow
 
 returnUserById :: Maybe (Key SqlT.User) -> ApiAction ctx m
 returnUserById Nothing =
@@ -67,8 +67,8 @@ deleteUserAction userId = do
   runSQL $ P.delete userId
   Util.emptyResponse
 
-postUsersAction :: Cfg.FlatrCfg -> JsonRegistration.Registration -> ApiAction ctx a
-postUsersAction cfg registration
+postUsersAction :: JsonRegistration.Registration -> ApiAction ctx a
+postUsersAction registration
   | Just code <- JsonRegistration.invitationCode registration = do
       -- fails if user provided code but code is not in DB
       (Entity invitationId theInvitation) <- Util.trySqlSelectFirstError Util.InvitationCodeInvalid SqlT.InvitationCode code
@@ -84,6 +84,7 @@ postUsersAction cfg registration
 
   | Just email <- JsonRegistration.email registration = do  -- no invitationCode provided
       gen <- liftIO getStdGen
+      cfg <- apiCfg <$> getState
       if email `elem` Cfg.whitelistedMails cfg then do
         setStatus created201
         newId <- registerUser registration gen email Nothing
