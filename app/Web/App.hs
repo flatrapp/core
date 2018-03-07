@@ -7,7 +7,6 @@
 
 module Web.App where
 
-import           Config                    (FlatrCfg)
 import           Control.Monad.IO.Class
 import           Data.Aeson                (object, (.=))
 import           Data.HVect                hiding (pack)
@@ -32,15 +31,15 @@ import           Web.Endpoints.Users
 import qualified Web.JWT                   as JWT
 import           Web.Spock
 
-app :: FlatrCfg -> Api ()
-app cfg =
+app :: Api ()
+app =
   prehook corsHeader $
   prehook initHook $ do
     routeAuth
     routeTasks
     routeInfo
     routeInvitations
-    routeUsers cfg
+    routeUsers
     prehook authHook $ do
       get ("users" <//> "current") currentUserAction  -- TODO move to Endpoints/Users.hs
       get "secret" secretAction
@@ -60,7 +59,7 @@ secretAction = do
   (subject :: Text) <- fmap findFirst getContext
   text $ "Welome!" <> subject
 
-corsHeader :: ActionCtxT a (WebStateM SqlBackend () ()) a
+corsHeader :: ApiAction ctx ctx
 corsHeader =
   do ctx <- getContext
      setHeader "Access-Control-Allow-Origin" "*"

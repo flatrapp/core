@@ -199,10 +199,7 @@ trySqlSelectFirstError errStatus identifier entityId = do
     Just entity -> return entity
 
 getCurrentUser :: ListContains n CoreT.Email xs
-                  => ActionCtxT
-                     (HVect xs)
-                     (WebStateM SqlBackend () ())
-                     (P.Entity SqlT.User)
+               => CoreT.ApiAction (HVect xs) (P.Entity SqlT.User)
 getCurrentUser = do
   email <- fmap findFirst getContext
   Util.trySqlSelectFirst' SqlT.UserEmail email
