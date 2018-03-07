@@ -7,6 +7,7 @@
 
 module Web.Endpoints.Auth where
 
+import           Control.Monad                    (when, unless)
 import           Control.Monad.IO.Class           (liftIO)
 import           Crypto.Random
 import           Data.Aeson                       hiding (json)
@@ -39,27 +40,27 @@ postAuthAction loginCredentials = do
                                              $ email loginCredentials
   let hashedPw = Util.hashPassword (password loginCredentials)
                                    (Util.decodeHex . SqlT.userSalt $ user)
-  if hashedPw /= SqlT.userPassword user then
+  when (hashedPw /= SqlT.userPassword user) $
     errorJson CredentialsWrong
-  else if not $ SqlT.userIsVerified user then
+  unless (SqlT.userIsVerified user) $
     errorJson EmailNotVerified
-  else if SqlT.userDisabled user then
+  when (SqlT.userDisabled user) $
     errorJson UserDisabled
-  else do
-    currentTime <- liftIO getPOSIXTime
-    tokenId <- Util.makeHex <$> liftIO (getRandomBytes 10)
-    let validUntil = currentTime + tokenTimeout + tokenGracePeriod
-    let key = JWT.secret jwtSecret
-    let cs = JWT.def { JWT.exp = JWT.numericDate validUntil
-                     , JWT.jti = JWT.stringOrURI tokenId
-                     , JWT.sub = JWT.stringOrURI $ email loginCredentials
-                     }
-    _newId <- Util.runSQL . insert . SqlT.Token
-                  userId tokenId $ posixSecondsToUTCTime validUntil
-    json $ object [ "token"    .= JWT.encodeSigned JWT.HS256 key cs
-                  , "tokenId"  .= tokenId
-                  , "validFor" .= tokenTimeout
-                  ]
+
+  currentTime <- liftIO getPOSIXTime
+  tokenId <- Util.makeHex <$> liftIO (getRandomBytes 10)
+  let validUntil = currentTime + tokenTimeout + tokenGracePeriod
+  let key = JWT.secret jwtSecret
+  let cs = JWT.def { JWT.exp = JWT.numericDate validUntil
+                    , JWT.jti = JWT.stringOrURI tokenId
+                    , JWT.sub = JWT.stringOrURI $ email loginCredentials
+                    }
+  _newId <- Util.runSQL . insert . SqlT.Token
+                userId tokenId $ posixSecondsToUTCTime validUntil
+  json $ object [ "token"    .= JWT.encodeSigned JWT.HS256 key cs
+                , "tokenId"  .= tokenId
+                , "validFor" .= tokenTimeout
+                ]
 
 tokenTimeout :: Data.Time.Clock.POSIX.POSIXTime
 tokenTimeout = 60 * 60
