@@ -2,34 +2,27 @@
 {-# LANGUAGE GADTs               #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeOperators       #-}
-
 
 module Web.App where
 
-import           Control.Monad.IO.Class
+import           Control.Monad.IO.Class    (liftIO, MonadIO)
 import           Data.Aeson                (object, (.=))
-import           Data.HVect                hiding (pack)
+import           Data.HVect                (HVect(..), ListContains, findFirst)
 import           Data.Monoid               ((<>))
 import           Data.Text                 (Text, pack)
-import qualified Data.Text                 as T
 import qualified Data.Text.Encoding        as T
-import           Data.Time.Clock           (getCurrentTime, UTCTime)
 import           Data.Time.Clock.POSIX     (getPOSIXTime)
-import qualified Database.Persist          as P
-import           Database.Persist.Sql      hiding (delete, get)
-import           Database.Persist.Sqlite   (SqlBackend)
-import           Model.CoreTypes           (Api, ApiAction, Email)
-import           Model.SqlTypes            (Token, tokenValidUntil, EntityField(TokenTokenId))
 import           Network.HTTP.Types.Status (Status, notFound404, statusMessage)
-import qualified Util
+import           Web.Spock
+
+import           Web.Auth                  (authHook)
+import           Model.CoreTypes           (Api, ApiAction, Email)
 import           Web.Endpoints.Auth
 import           Web.Endpoints.Info
 import           Web.Endpoints.Invitation
 import           Web.Endpoints.Tasks
 import           Web.Endpoints.Users
-import qualified Web.JWT                   as JWT
-import           Web.Spock
+import qualified Util
 
 app :: Api ()
 app =
@@ -79,40 +72,3 @@ errorHandler status
                       "message" .= T.decodeUtf8 (statusMessage status)
                     ]
                   ]
-
-tokenFromHeader :: Text -> Maybe Text
-tokenFromHeader = T.stripPrefix "Bearer "
-
-extractToken :: JWT.JSON -> Maybe JWT.JWTClaimsSet
-extractToken bearerToken =
-  JWT.claims <$> JWT.decodeAndVerifySignature (JWT.secret jwtSecret) bearerToken
-
-retrieveServerToken :: (SpockConn m ~ SqlBackend, Monad m, HasSpock m) =>
-                       Maybe JWT.StringOrURI -> m (Maybe (Entity Token))
-retrieveServerToken (Just tokenId) = Util.runSQL $ P.selectFirst [TokenTokenId ==. Util.showText tokenId] []
-retrieveServerToken Nothing        = return Nothing
-
-validateToken :: UTCTime -> Token -> Maybe Token
-validateToken currentTime token
-  | tokenValidUntil token > currentTime = Just token
-  | otherwise = Nothing
-
-conditionalTokenEntityUnpack :: (Token -> Maybe Token) -> Maybe (Entity Token) -> Maybe Token
-conditionalTokenEntityUnpack = flip ((>>=) . fmap entityVal)
-
-authHook :: ApiAction (HVect xs) (HVect (Email ': xs))
-authHook = do
-  oldCtx <- getContext
-  maybeAuthHeader <- header "Authorization"
-  currentTime <- liftIO getCurrentTime
-  let maybeClaims = maybeAuthHeader >>= tokenFromHeader >>= extractToken
-  let maybeTokenId = JWT.jti =<< maybeClaims
-  let maybeSubject = JWT.sub =<< maybeClaims
-
-  (maybeT::Maybe Token) <- conditionalTokenEntityUnpack (validateToken currentTime) <$> retrieveServerToken maybeTokenId
-
-  case maybeT >> maybeSubject of
-    Nothing ->
-      Util.errorJson Util.Unauthorized
-    Just subject ->
-      return $ (pack . show $ subject) :&: oldCtx

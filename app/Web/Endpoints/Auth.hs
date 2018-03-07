@@ -7,12 +7,12 @@
 
 module Web.Endpoints.Auth where
 
-import           Control.Monad.IO.Class
+import           Control.Monad.IO.Class           (liftIO)
 import           Crypto.Random
 import           Data.Aeson                       hiding (json)
 import           Data.Text                        (Text)
-import           Data.Time.Clock.POSIX            (POSIXTime, getPOSIXTime,
-                                                   posixSecondsToUTCTime)
+import           Data.Time.Clock.POSIX            (POSIXTime, getPOSIXTime
+                                                  , posixSecondsToUTCTime)
 import           Database.Persist.Sql             hiding (delete, get)
 import           Model.CoreTypes                  (ApiAction, Api)
 import qualified Model.SqlTypes                   as SqlT

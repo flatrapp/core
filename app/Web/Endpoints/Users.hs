@@ -26,8 +26,9 @@ import           Model.CoreTypes              (ApiAction, Api, Email, apiCfg)
 import qualified Model.SqlTypes               as SqlT
 import qualified Model.JsonTypes.Registration as JsonRegistration
 import qualified Model.JsonTypes.User         as JsonUser
-import           Util                         (errorJson, runSQL, getCurrentUser)
+import           Util                         (errorJson, runSQL)
 import qualified Util
+import           Web.Auth                     (getCurrentUser)
 
 -- TODO restrict all endpoints to logged in users EXCEPT post "users"
 routeUsers :: Api ctx
@@ -123,4 +124,4 @@ registerUser registration gen mail verificationCode = runSQL $ insertUnique user
           hashedSaltedPassword = Util.hashPassword pw salt'
 
 currentUserAction :: ListContains n Email xs => ApiAction (HVect xs) a
-currentUserAction = Util.getCurrentUser >>= json . JsonUser.jsonUser
+currentUserAction = getCurrentUser >>= json . JsonUser.jsonUser

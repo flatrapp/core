@@ -17,7 +17,6 @@ import           Data.Aeson                ( FromJSON
                                            )
 import qualified Data.ByteString           as BS
 import qualified Data.ByteString.Base16    as B16
-import           Data.HVect                (HVect, ListContains, findFirst)
 import qualified Data.Text                 as T
 import qualified Data.Text.Encoding        as E
 import qualified Data.Word8
@@ -30,12 +29,11 @@ import           Database.Persist.Sqlite   ( SqlBackend
                                            , runSqlConn
                                            , fromSqlKey
                                            )
-import qualified Model.CoreTypes           as CoreT
-import qualified Model.SqlTypes            as SqlT
 import           Network.HTTP.Types.Status
-import           Prelude                   hiding (length)
 import           System.Random
 import           Web.Spock
+
+import qualified Model.CoreTypes           as CoreT
 
 randomText :: Int -> StdGen -> T.Text
 randomText len gen  = makeHex $ randomBS len gen
@@ -197,9 +195,3 @@ trySqlSelectFirstError errStatus identifier entityId = do
   case mEntity of
     Nothing -> errorJson errStatus
     Just entity -> return entity
-
-getCurrentUser :: ListContains n CoreT.Email xs
-               => CoreT.ApiAction (HVect xs) (P.Entity SqlT.User)
-getCurrentUser = do
-  email <- fmap findFirst getContext
-  Util.trySqlSelectFirst' SqlT.UserEmail email
