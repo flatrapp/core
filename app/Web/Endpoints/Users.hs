@@ -28,22 +28,23 @@ import qualified Model.JsonTypes.Registration as JsonRegistration
 import qualified Model.JsonTypes.User         as JsonUser
 import           Util                         (errorJson, runSQL)
 import qualified Util
-import           Web.Auth                     (getCurrentUser)
+import           Web.Auth                     (getCurrentUser, authHook)
 
--- TODO restrict all endpoints to logged in users EXCEPT post "users"
-routeUsers :: Api ctx
+routeUsers :: Api (HVect xs)
 routeUsers = do
-  get "users" $ do
-    mCode <- param "code"
-    case mCode of
-      Nothing -> getUsersAction
-      Just code -> verifyEmailAction code -- TODO maybe simplify
-  get ("users" <//> var) $ returnUserById . Just
-  delete ("user" <//> var) $ \userId ->
-    Util.trySqlGet userId >> deleteUserAction userId
-  -- TOOD implement put "users" $ do
   post "users" $
     Util.eitherJsonBody >>= postUsersAction -- TODO use the Nothing case as intermediate action and chain it in somehow
+  prehook authHook $ do
+    get ("users" <//> "current") currentUserAction
+    get "users" $ do
+      mCode <- param "code"
+      case mCode of
+        Nothing -> getUsersAction
+        Just code -> verifyEmailAction code -- TODO maybe simplify
+    get ("users" <//> var) $ returnUserById . Just
+    delete ("user" <//> var) $ \userId ->
+      Util.trySqlGet userId >> deleteUserAction userId
+    -- TOOD implement put "users" $ do
 
 returnUserById :: Maybe (Key SqlT.User) -> ApiAction ctx m
 returnUserById Nothing =
@@ -52,18 +53,19 @@ returnUserById Nothing =
 returnUserById (Just userId) =
   Util.trySqlSelectFirst SqlT.UserId userId >>= json . JsonUser.jsonUser
 
-getUsersAction :: ApiAction ctx a
+getUsersAction :: ListContains n Email xs => ApiAction (HVect xs) a
 getUsersAction =
   json =<< (map JsonUser.jsonUser <$> runSQL (selectList [] [Asc SqlT.UserId]))
 
-verifyEmailAction :: Text -> ApiAction ctx a
+verifyEmailAction :: ListContains n Email xs => Text -> ApiAction (HVect xs) a
 verifyEmailAction code = do
   (Entity userId _user) <- Util.trySqlSelectFirstError Util.VerificationCodeInvalid SqlT.UserVerifyCode $ Just code
   runSQL $ P.updateWhere [SqlT.UserId ==. userId]
                          [SqlT.UserVerifyCode =. Nothing]
   returnUserById $ Just userId
 
-deleteUserAction :: SqlT.UserId -> ApiAction ctx a
+deleteUserAction :: ListContains n Email xs
+                 => SqlT.UserId -> ApiAction (HVect xs) a
 deleteUserAction userId = do
   runSQL $ P.delete userId
   Util.emptyResponse

@@ -33,8 +33,7 @@ app =
     routeInfo
     routeInvitations
     routeUsers
-    prehook authHook $ do
-      get ("users" <//> "current") currentUserAction  -- TODO move to Endpoints/Users.hs
+    prehook authHook $
       get "secret" secretAction
     get "test" testAction
     -- Allow for pre-flight AJAX requests

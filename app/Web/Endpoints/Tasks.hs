@@ -9,6 +9,7 @@ module Web.Endpoints.Tasks where
 
 import           Control.Monad             ((<=<), when, void)
 import           Control.Monad.IO.Class
+import           Data.HVect                (HVect, ListContains)
 import           Data.Maybe                (fromJust, listToMaybe, fromMaybe)
 import           Data.List                 ((\\))
 import           Data.Time.Clock
@@ -20,30 +21,33 @@ import           Formatting                ((%), int, sformat)
 import           Network.HTTP.Types.Status (created201)
 import           Web.Spock                 hiding (head)
 
-import           Model.CoreTypes           (ApiAction, Api)
+import           Model.CoreTypes           (ApiAction, Api, Email)
 import qualified Model.SqlTypes            as SqlT
 import qualified Model.JsonTypes.Task      as JsonTask
 import qualified Model.JsonTypes.TaskIn    as JsonTaskIn
 import qualified Model.JsonTypes.Turn      as JsonTurn
 import           Util                      (runSQL)
 import qualified Util
+import           Web.Auth                  (authHook)
 
--- TODO restrict all endpoints to logged in users
-routeTasks :: Api ctx
-routeTasks = do
-  get "tasks" getTasksAction
-  get ("tasks" <//> var) $
-    getTaskAction <=< Util.trySqlSelectFirst SqlT.TaskId
-  delete ("tasks" <//> var) $ \taskId ->
-    Util.trySqlGet taskId >> deleteTaskAction taskId
-  post ("tasks" <//> var <//> "finish") $ \taskId ->
-    Util.trySqlSelectFirst SqlT.TurnTaskId taskId >> finishTaskAction taskId
-  post ("tasks" <//> "update") updateTurnsAction
-  put ("tasks" <//> var) $ \taskId ->
-    Util.eitherJsonBody >>= putTaskAction taskId
-  post "tasks" $ Util.eitherJsonBody >>= postTasksAction
+routeTasks :: Api (HVect xs)
+routeTasks =
+  prehook authHook $ do
+    get "tasks" getTasksAction
+    get ("tasks" <//> var) $
+      getTaskAction <=< Util.trySqlSelectFirst SqlT.TaskId
+    delete ("tasks" <//> var) $ \taskId ->
+      Util.trySqlGet taskId >> deleteTaskAction taskId
+    post ("tasks" <//> var <//> "finish") $ \taskId ->
+      Util.trySqlSelectFirst SqlT.TurnTaskId taskId >> finishTaskAction taskId
+    post ("tasks" <//> "update") updateTurnsAction
+    put ("tasks" <//> var) $ \taskId ->
+      Util.eitherJsonBody >>= putTaskAction taskId
+    post "tasks" $ Util.eitherJsonBody >>= postTasksAction
 
-getTaskInfo :: (JsonTask.Task -> ApiAction ctx a) -> Entity SqlT.Task -> ApiAction ctx a
+getTaskInfo :: (JsonTask.Task -> ApiAction ctx a)
+             -> Entity SqlT.Task
+             -> ApiAction ctx a
 getTaskInfo fun theTask@(Entity taskId _task) = do
   users <- map (\(Entity _ taskUser) -> SqlT.taskUserUserId taskUser)
              <$> runSQL (P.selectList [SqlT.TaskUserTaskId ==. taskId] [])
@@ -59,19 +63,22 @@ getTaskInfo fun theTask@(Entity taskId _task) = do
                          (Nothing, otherTurns)
   fun $ JsonTask.jsonTask users splitTurns theTask
 
-getTasksAction :: ApiAction ctx a
+getTasksAction :: ListContains n Email xs => ApiAction (HVect xs) a
 getTasksAction =
   json =<< mapM (getTaskInfo return) =<< runSQL (selectList [] [Asc SqlT.TaskId])
 
-getTaskAction :: Entity SqlT.Task -> ApiAction ctx a
+getTaskAction :: ListContains n Email xs
+              => Entity SqlT.Task -> ApiAction (HVect xs) a
 getTaskAction = getTaskInfo json
 
-deleteTaskAction :: SqlT.TaskId -> ApiAction ctx a
+deleteTaskAction :: ListContains n Email xs
+                 => SqlT.TaskId -> ApiAction (HVect xs) a
 deleteTaskAction taskId = do
   runSQL $ P.delete taskId
   Util.emptyResponse
 
-finishTaskAction :: SqlT.TaskId -> ApiAction ctx a
+finishTaskAction :: ListContains n Email xs
+                 => SqlT.TaskId -> ApiAction (HVect xs) a
 finishTaskAction taskId = do
   currentTime <- liftIO getCurrentTime
   runSQL $ P.updateWhere
@@ -82,7 +89,8 @@ finishTaskAction taskId = do
     [SqlT.TurnFinishedAt =. Just currentTime]
   Util.emptyResponse
 
-putTaskAction :: SqlT.TaskId -> JsonTaskIn.Task -> ApiAction ctx a
+putTaskAction :: ListContains n Email xs
+              => SqlT.TaskId -> JsonTaskIn.Task -> ApiAction (HVect xs) a
 -- TODO combine with postTaskAction
 -- TODO maybe to JsonTaskIn.Task with argument pattern matching as well
 putTaskAction taskId task = do
@@ -95,7 +103,8 @@ putTaskAction taskId task = do
       }
   returnNewTask taskId
 
-postTasksAction :: JsonTaskIn.Task -> ApiAction ctx a
+postTasksAction :: ListContains n Email xs
+                => JsonTaskIn.Task -> ApiAction (HVect xs) a
 postTasksAction task = do
   -- post actual Task
   taskId <- runSQL $ insert SqlT.Task {
@@ -114,7 +123,7 @@ postTasksAction task = do
   updateTurns
   returnNewTask taskId
 
-updateTurnsAction :: ApiAction ctx a
+updateTurnsAction :: ListContains n Email xs => ApiAction (HVect xs) a
 updateTurnsAction = do
   updateTurns
   Util.emptyResponse
