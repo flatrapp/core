@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Model.JsonTypes.LoginCredentials where
+module Model.JsonTypes.LoginCredentials (LoginCredentials(..)) where
 
 import           Data.Aeson              (withObject, parseJSON, FromJSON)
 import           Data.Text               (Text)

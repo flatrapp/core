@@ -5,7 +5,7 @@
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
 
-module Web.Endpoints.Invitation where
+module Web.Endpoints.Invitation (routeInvitations) where
 
 import           Control.Monad.IO.Class       (liftIO)
 import           Crypto.Random                (getRandomBytes)
@@ -21,7 +21,7 @@ import qualified Model.JsonTypes.Invitation   as JsonInvitation
 import qualified Model.JsonTypes.InvitationIn as JsonInvitationIn
 import           Util                         (errorJson, runSQL)
 import qualified Util
-import           Web.Auth                  (authHook)
+import           Web.Auth                     (authHook)
 
 -- TODO restrict all endpoints to logged in users
 routeInvitations :: Api (HVect xs)

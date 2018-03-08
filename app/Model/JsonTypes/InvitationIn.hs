@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Model.JsonTypes.InvitationIn where
+module Model.JsonTypes.InvitationIn (Invitation(..)) where
 
 import           Data.Aeson              (withObject, parseJSON, FromJSON)
 import           Data.Text               (Text)

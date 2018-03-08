@@ -1,15 +1,18 @@
 {-# LANGUAGE OverloadedStrings     #-}
 
-module Mail where
+module Mail
+    ( sendVerificationMail
+    )
+where
 
-import           Data.Text               (Text, unpack)
-import           Formatting              ((%), stext, format)
-import qualified Network.Mail.SMTP       as Smtp
-import qualified Network.Mail.Mime       as Mime
-import           Network.Socket          (PortNumber)
+import           Data.Text         (Text, unpack)
+import           Formatting        ((%), stext, format)
+import qualified Network.Mail.SMTP as Smtp
+import qualified Network.Mail.Mime as Mime
+import           Network.Socket    (PortNumber)
 
-import qualified Config                  as Cfg
-import           Model.CoreTypes         (Email)
+import qualified Config            as Cfg
+import           Model.CoreTypes   (Email)
 
 
 sendMail :: Cfg.SmtpConfig -> Mime.Mail -> IO ()

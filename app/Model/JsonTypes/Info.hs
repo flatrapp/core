@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 
-module Model.JsonTypes.Info where
+module Model.JsonTypes.Info (Info(..)) where
 
 import           Data.Aeson      (ToJSON)
 import           Data.Text       (Text)

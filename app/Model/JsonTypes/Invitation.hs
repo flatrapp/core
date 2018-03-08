@@ -1,6 +1,10 @@
 {-# LANGUAGE DeriveGeneric #-}
 
-module Model.JsonTypes.Invitation where
+module Model.JsonTypes.Invitation
+    ( Invitation(..)
+    , jsonInvitation
+    )
+where
 
 import           Data.Aeson           (ToJSON)
 import           Data.Text            (Text)

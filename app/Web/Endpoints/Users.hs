@@ -8,16 +8,16 @@
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
 
-module Web.Endpoints.Users where
+module Web.Endpoints.Users (routeUsers) where
 
-import           Control.Monad.IO.Class
+import           Control.Monad.IO.Class       (liftIO)
 import           Crypto.Random                (getRandomBytes)
 import           Data.HVect                   (HVect, ListContains)
 import           Data.Text                    (Text)
 import           Database.Persist             hiding (delete, get)
 import qualified Database.Persist             as P
 import           Network.HTTP.Types.Status    (created201)
-import           System.Random
+import           System.Random                (StdGen, getStdGen)
 import           Web.Spock
 
 import qualified Config                       as Cfg

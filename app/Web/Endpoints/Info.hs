@@ -1,13 +1,14 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Web.Endpoints.Info where
+module Web.Endpoints.Info (routeInfo) where
 
-import           Control.Monad.IO.Class
+import           Control.Monad.IO.Class (liftIO)
 import           Data.Text              (Text)
 import           Data.Time.Clock        (getCurrentTime)
-import           Model.CoreTypes        (ApiAction, Api)
-import           Model.JsonTypes.Info
 import           Web.Spock
+
+import           Model.CoreTypes        (ApiAction, Api)
+import           Model.JsonTypes.Info   (Info(..))
 
 apiVersion :: Text
 apiVersion = "v0.1"

@@ -1,11 +1,11 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DeriveGeneric     #-}
 
-module Model.JsonTypes.TaskIn where
+module Model.JsonTypes.TaskIn (Task(..)) where
 
-import           Data.Aeson             (withObject, parseJSON, FromJSON)
-import           Data.Text              (Text)
-import           GHC.Generics           (Generic)
+import           Data.Aeson              (withObject, parseJSON, FromJSON)
+import           Data.Text               (Text)
+import           GHC.Generics            (Generic)
 import           Model.JsonTypes.Parsing
 
 data Task =

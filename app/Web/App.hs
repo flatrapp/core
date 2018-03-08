@@ -3,7 +3,7 @@
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Web.App where
+module Web.App (app, errorHandler) where
 
 import           Control.Monad.IO.Class    (liftIO, MonadIO)
 import           Data.Aeson                (object, (.=))
@@ -17,11 +17,12 @@ import           Web.Spock
 
 import           Web.Auth                  (authHook)
 import           Model.CoreTypes           (Api, ApiAction, Email)
-import           Web.Endpoints.Auth
-import           Web.Endpoints.Info
-import           Web.Endpoints.Invitation
-import           Web.Endpoints.Tasks
-import           Web.Endpoints.Users
+import           Web.Endpoints.Auth        ( routeAuth
+                                           , tokenTimeout, tokenGracePeriod)
+import           Web.Endpoints.Info        (routeInfo)
+import           Web.Endpoints.Invitation  (routeInvitations)
+import           Web.Endpoints.Tasks       (routeTasks)
+import           Web.Endpoints.Users       (routeUsers)
 import qualified Util
 
 app :: Api ()

@@ -4,10 +4,32 @@
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
 
-module Util where
+module Util
+    ( JsonError(..)
+    , decodeHex
+    , eitherJsonBody
+    , emptyResponse
+    , errorJson
+    , hashPassword
+    , integerKey
+    , makeHex
+    , maybeToEither
+    , maybeTuple
+    , randomBS
+    , randomBytes
+    , randomText
+    , runSQL
+    , showText
+    , trySqlGet
+    , trySqlGet'
+    , trySqlSelectFirst
+    , trySqlSelectFirst'
+    , trySqlSelectFirstError
+    )
+where
 
-import           Control.Arrow
-import           Control.Monad.IO.Class
+import           Control.Arrow             ((***))
+import           Control.Monad.IO.Class    (MonadIO)
 import           Control.Monad.Logger      (LoggingT, runStdoutLoggingT)
 import qualified Crypto.Hash.SHA512        as SHA
 import           Data.Aeson                ( FromJSON
@@ -19,7 +41,7 @@ import qualified Data.ByteString           as BS
 import qualified Data.ByteString.Base16    as B16
 import qualified Data.Text                 as T
 import qualified Data.Text.Encoding        as E
-import qualified Data.Word8
+import           Data.Word8                (Word8)
 import qualified Database.Persist          as P
 import           Database.Persist          ((==.))
 import           Database.Persist.Sqlite   ( SqlBackend
@@ -30,7 +52,7 @@ import           Database.Persist.Sqlite   ( SqlBackend
                                            , fromSqlKey
                                            )
 import           Network.HTTP.Types.Status
-import           System.Random
+import           System.Random             (StdGen, next)
 import           Web.Spock
 
 import qualified Model.CoreTypes           as CoreT
@@ -38,7 +60,7 @@ import qualified Model.CoreTypes           as CoreT
 randomText :: Int -> StdGen -> T.Text
 randomText len gen  = makeHex $ randomBS len gen
 
-randomBytes :: Int -> StdGen -> [Data.Word8.Word8]
+randomBytes :: Int -> StdGen -> [Word8]
 randomBytes 0 _ = []
 randomBytes ct g =
     let (value, nextG) = next g

@@ -12,8 +12,12 @@ module Model.SqlTypes where
 import           Data.Maybe              (isJust)
 import           Data.Text               (Text)
 import           Data.Time.Clock         (UTCTime)
-import           Database.Persist.Sqlite
-import           Database.Persist.TH
+import           Database.Persist.TH     ( persistLowerCase
+                                         , mkMigrate
+                                         , mkPersist
+                                         , sqlSettings
+                                         , share
+                                         )
 
 import           Model.CoreTypes         (Email)
 

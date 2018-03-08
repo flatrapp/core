@@ -1,9 +1,9 @@
 {-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Model.JsonTypes.Registration where
+module Model.JsonTypes.Registration (Registration(..)) where
 
-import           Control.Monad
+import           Control.Monad (when)
 import           Data.Aeson    (withObject, parseJSON, FromJSON)
 import           Data.Text     (Text)
 import           Data.Maybe    (isNothing, isJust)

@@ -1,6 +1,19 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Model.JsonTypes.Parsing where
+module Model.JsonTypes.Parsing
+    ( always
+    , lengthBetween
+    , matchesRegex
+    , nonEmptyList
+    , nonEmptyString
+    , nonZero
+    , nonZeroPositive
+    , parseIf
+    , parseMaybeIf
+    , positive
+    , validEmail
+    )
+where
 
 import           Data.Aeson          ((.:), (.:?))
 import           Data.Aeson.Types    (Parser, Object, FromJSON)

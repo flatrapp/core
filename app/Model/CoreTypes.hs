@@ -1,6 +1,12 @@
 {-# LANGUAGE OverloadedStrings          #-}
 
-module Model.CoreTypes where
+module Model.CoreTypes
+    ( Api
+    , ApiAction
+    , Email
+    , ApiState(..)
+    )
+where
 
 import           Data.Text               (Text)
 import           Database.Persist.Sqlite (SqlBackend)

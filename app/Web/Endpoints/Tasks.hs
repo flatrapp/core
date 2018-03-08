@@ -5,16 +5,17 @@
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
 
-module Web.Endpoints.Tasks where
+module Web.Endpoints.Tasks (routeTasks) where
 
 import           Control.Monad             ((<=<), when, void)
-import           Control.Monad.IO.Class
+import           Control.Monad.IO.Class    (liftIO)
 import           Data.HVect                (HVect, ListContains)
 import           Data.Maybe                (fromJust, listToMaybe, fromMaybe)
 import           Data.List                 ((\\))
-import           Data.Time.Clock
+import           Data.Time.Clock           ( NominalDiffTime
+                                           , addUTCTime, getCurrentTime)
 import qualified Database.Esqueleto        as E
-import           Database.Persist          hiding (delete, get)
+import           Database.Persist          hiding (delete, get)  -- TODO specify
 import qualified Database.Persist          as P
 import qualified Database.Persist.Sql      as PSql
 import           Formatting                ((%), int, sformat)

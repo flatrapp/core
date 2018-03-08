@@ -1,7 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Config where
+module Config
+    ( FlatrCfg(..)
+    , SmtpConfig(..)
+    , parseConfig
+    )
+where
 
 import qualified Data.Configurator       as C
 import qualified Data.Configurator.Types as C

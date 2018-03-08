@@ -5,16 +5,25 @@
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
 
-module Web.Endpoints.Auth where
+module Web.Endpoints.Auth
+    ( routeAuth
+    , jwtSecret -- TODO get directly from config
+    , tokenTimeout
+    , tokenGracePeriod
+    )
+where
 
 import           Control.Monad                    (when, unless)
 import           Control.Monad.IO.Class           (liftIO)
-import           Crypto.Random
-import           Data.Aeson                       hiding (json)
+import           Crypto.Random                    (getRandomBytes)
+import           Data.Aeson                       (object, (.=))
 import           Data.Text                        (Text)
 import           Data.Time.Clock.POSIX            (POSIXTime, getPOSIXTime
                                                   , posixSecondsToUTCTime)
 import           Database.Persist.Sql             hiding (delete, get)
+import qualified Web.JWT                          as JWT
+import           Web.Spock
+
 import           Model.CoreTypes                  (ApiAction, Api)
 import qualified Model.SqlTypes                   as SqlT
 import           Model.JsonTypes.LoginCredentials
@@ -27,8 +36,6 @@ import           Util                             ( errorJson
                                                   , trySqlSelectFirstError
                                                   )
 import qualified Util
-import qualified Web.JWT                          as JWT
-import           Web.Spock
 
 routeAuth :: Api ctx
 routeAuth = post "auth" $ eitherJsonBody >>= postAuthAction

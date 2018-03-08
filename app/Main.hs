@@ -1,18 +1,20 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Main where
+module Main (main) where
 
-import           Web.Spock
-import           Web.Spock.Config
 import           Control.Monad.Logger    (runStdoutLoggingT)
 import           Database.Persist.Sqlite hiding (delete, get)
-import           System.Environment
+import           System.Environment      (getArgs, getProgName)
+import           Web.Spock               (spock, runSpock)
+import           Web.Spock.Config        ( SpockCfg(..)
+                                         , PoolOrConn(..)
+                                         , defaultSessionCfg
+                                         )
 
 import qualified Config
 import           Model.SqlTypes          (migrateAll)
 import           Model.CoreTypes         (ApiState(..))
-import           Web.App
-
+import           Web.App                 (app, errorHandler)
 
 main :: IO ()
 main = getArgs >>= parseArgs

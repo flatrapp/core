@@ -1,6 +1,10 @@
 {-# LANGUAGE DeriveGeneric #-}
 
-module Model.JsonTypes.Task where
+module Model.JsonTypes.Task
+    ( Task(..)
+    , jsonTask
+    )
+where
 
 import           Data.Aeson           (ToJSON)
 import           Data.Text            (Text)

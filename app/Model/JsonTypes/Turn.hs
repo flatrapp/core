@@ -1,6 +1,10 @@
 {-# LANGUAGE DeriveGeneric #-}
 
-module Model.JsonTypes.Turn where
+module Model.JsonTypes.Turn
+    ( Turn(..)
+    , jsonTurn
+    )
+where
 
 import           Data.Aeson           (ToJSON)
 import           Database.Persist.Sql (Entity(..))

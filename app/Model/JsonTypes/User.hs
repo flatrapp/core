@@ -1,11 +1,15 @@
 {-# LANGUAGE DeriveGeneric #-}
 
-module Model.JsonTypes.User where
+module Model.JsonTypes.User
+    ( User(..)
+    , jsonUser
+    )
+where
 
 import           Data.Aeson           (ToJSON)
 import           Data.Text            (Text)
 import           Database.Persist.Sql (Entity(..))
-import           GHC.Generics
+import           GHC.Generics         (Generic)
 import qualified Model.SqlTypes       as SqlT
 import           Prelude              hiding (id)
 import qualified Util
