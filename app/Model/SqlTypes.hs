@@ -9,7 +9,7 @@
 
 module Model.SqlTypes where
 
-import           Data.Maybe              (isJust)
+import           Data.Maybe              (isNothing)
 import           Data.Text               (Text)
 import           Data.Time.Clock         (UTCTime)
 import           Database.Persist.TH     ( persistLowerCase
@@ -70,4 +70,4 @@ Invitation json
 |]
 
 userIsVerified :: User -> Bool
-userIsVerified = isJust . userVerifyCode
+userIsVerified = isNothing . userVerifyCode
