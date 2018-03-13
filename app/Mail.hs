@@ -1,7 +1,9 @@
 {-# LANGUAGE OverloadedStrings     #-}
 
 module Mail
-    ( sendVerificationMail
+    ( sendBuiltMail
+    , buildVerificationMail
+    , buildInvitationMail
     )
 where
 
@@ -22,22 +24,45 @@ sendMail cfg = Smtp.sendMailWithLogin' host port user password
         user     = unpack $ Cfg.username cfg
         password = unpack $ Cfg.password cfg
 
-sendVerificationMail :: Cfg.FlatrCfg -> Email -> Text -> IO ()
-sendVerificationMail cfg emailAddress code
+sendBuiltMail :: Cfg.FlatrCfg -> Email
+              -> (Cfg.SmtpConfig -> Email -> Mime.Mail)
+              -> IO ()
+sendBuiltMail cfg emailAddress builder
   | (Just smtpConfig) <- Cfg.smtpConfig cfg =
-      sendMail smtpConfig $ buildVerificationMail smtpConfig emailAddress code
+      sendMail smtpConfig $ builder smtpConfig emailAddress
   | otherwise = putStrLn "No smtp config was set so no verification email was sent"
 
-buildVerificationMail :: Cfg.SmtpConfig -> Email -> Text -> Mime.Mail
-buildVerificationMail smtpConfig toAddress code =
+buildMail :: Text
+          -> Text
+          -> Mime.Part
+          -> Cfg.SmtpConfig
+          -> Text
+          -> Mime.Mail
+buildMail subject username body smtpConfig toAddress =
   Smtp.simpleMail from to [] [] subject [body]
   where from = Smtp.Address (Just "Flatr Admin") (Cfg.sender smtpConfig)
         to = [Smtp.Address (Just username) toAddress]
-        username = "TODO FIXME"
+
+buildVerificationMail :: Text -> Cfg.SmtpConfig -> Email -> Mime.Mail
+buildVerificationMail code =
+  buildMail subject username body
+  where username = "TODO FIXME"
         subject = "Flatr Verification"
+        body = Smtp.plainTextPart $ format
+                   ( "Please confirm your email adress by visiting this URL"
+                     % stext % "/#signup?code=" % stext % "&serverUrl=" % stext
+                   ) frontendUrl code serverUrl
         serverUrl = "https://localhost:8080" :: Text
         frontendUrl = "https://localhost:8000" :: Text
+
+buildInvitationMail :: Text -> Cfg.SmtpConfig -> Email -> Mime.Mail
+buildInvitationMail code =
+  buildMail subject username body
+  where username = "TODO FIXME"
+        subject = "Flatr Invitation"
         body = Smtp.plainTextPart $ format
-                 ( "Please confirm your email adress by visiting that URL"
-                   % stext % "/#signup?code=" % stext % "&serverUrl=" % stext
-                 ) frontendUrl code serverUrl
+                   ( "You are invited to join Flatr, to accept visit this URL"
+                     % stext % "/#signup?code=" % stext % "&serverUrl=" % stext
+                   ) frontendUrl code serverUrl
+        serverUrl = "https://localhost:8080" :: Text
+        frontendUrl = "https://localhost:8000" :: Text

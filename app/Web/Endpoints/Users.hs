@@ -98,7 +98,7 @@ postUsersAction registration
         -- fails if user exists
         _user <- Util.trySqlSelectFirstError Util.UserEmailExists SqlT.UserEmail email
         verificationCode <- Util.makeHex <$> liftIO (getRandomBytes 10)
-        liftIO $ Mail.sendVerificationMail cfg email verificationCode
+        liftIO $ Mail.sendBuiltMail cfg email (Mail.buildVerificationMail verificationCode)
         registerUser registration gen email (Just verificationCode) >>= returnUserById
 
   | otherwise = -- User should provide at least code or email

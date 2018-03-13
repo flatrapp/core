@@ -15,7 +15,8 @@ import           Formatting                   ((%), int, sformat)
 import           Network.HTTP.Types.Status    (created201)
 import           Web.Spock
 
-import           Model.CoreTypes              (ApiAction, Api, Email)
+import qualified Mail
+import           Model.CoreTypes              (ApiAction, Api, Email, apiCfg)
 import qualified Model.SqlTypes               as SqlT
 import qualified Model.JsonTypes.Invitation   as JsonInvitation
 import qualified Model.JsonTypes.InvitationIn as JsonInvitationIn
@@ -23,7 +24,6 @@ import           Util                         (errorJson, runSQL)
 import qualified Util
 import           Web.Auth                     (authHook)
 
--- TODO restrict all endpoints to logged in users
 routeInvitations :: Api (HVect xs)
 routeInvitations =
   prehook authHook $ do
@@ -48,16 +48,21 @@ deleteInvitationAction invitationId = do
 
 resendInvitationAction :: ListContains n Email xs
                        => P.Entity SqlT.Invitation -> ApiAction (HVect xs) a
-resendInvitationAction =
-  -- TODO resend invitation mail
-  json . JsonInvitation.jsonInvitation
+resendInvitationAction i@(P.Entity _id invitation) = do
+  cfg <- apiCfg <$> getState
+  liftIO $ Mail.sendBuiltMail cfg email (Mail.buildInvitationMail invitationCode)
+  json $ JsonInvitation.jsonInvitation i
+    where
+  email = SqlT.invitationEmail invitation
+  invitationCode = SqlT.invitationCode invitation
 
 postInvitationAction :: ListContains n Email xs
                      => JsonInvitationIn.Invitation -> ApiAction (HVect xs) a
 postInvitationAction invitation = do
   invitationCode <- Util.makeHex <$> liftIO (getRandomBytes 10)
+  let email = JsonInvitationIn.email invitation
   maybeInvitationId <- runSQL $ P.insertUnique
-    SqlT.Invitation { SqlT.invitationEmail = JsonInvitationIn.email invitation
+    SqlT.Invitation { SqlT.invitationEmail = email
                     , SqlT.invitationCode  = invitationCode
                     }
   case maybeInvitationId of
@@ -65,7 +70,8 @@ postInvitationAction invitation = do
       errorJson Util.InvitationEmailExists
     Just invitationId -> do
       newInvitation <- Util.trySqlSelectFirst' SqlT.InvitationId invitationId
-      -- TODO send invitation email if smtp config is set
+      cfg <- apiCfg <$> getState
+      liftIO $ Mail.sendBuiltMail cfg email (Mail.buildInvitationMail invitationCode)
       setStatus created201
       let location = sformat ("/invitation/" % int) (Util.integerKey invitationId :: Integer)
       setHeader "Location" location
