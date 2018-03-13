@@ -50,7 +50,7 @@ resendInvitationAction :: ListContains n Email xs
                        => P.Entity SqlT.Invitation -> ApiAction (HVect xs) a
 resendInvitationAction i@(P.Entity _id invitation) = do
   cfg <- apiCfg <$> getState
-  liftIO $ Mail.sendBuiltMail cfg email (Mail.buildInvitationMail invitationCode)
+  liftIO $ Mail.sendBuiltMail cfg email $ Mail.buildInvitationMail invitationCode
   json $ JsonInvitation.jsonInvitation i
     where
   email = SqlT.invitationEmail invitation

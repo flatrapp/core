@@ -33,7 +33,7 @@ sendBuiltMail cfg emailAddress builder
   | otherwise = putStrLn "No smtp config was set so no verification email was sent"
 
 buildMail :: Text
-          -> Text
+          -> Maybe Text
           -> Mime.Part
           -> Cfg.SmtpConfig
           -> Text
@@ -41,13 +41,12 @@ buildMail :: Text
 buildMail subject username body smtpConfig toAddress =
   Smtp.simpleMail from to [] [] subject [body]
   where from = Smtp.Address (Just "Flatr Admin") (Cfg.sender smtpConfig)
-        to = [Smtp.Address (Just username) toAddress]
+        to = [Smtp.Address username toAddress]
 
-buildVerificationMail :: Text -> Cfg.SmtpConfig -> Email -> Mime.Mail
-buildVerificationMail code =
-  buildMail subject username body
-  where username = "TODO FIXME"
-        subject = "Flatr Verification"
+buildVerificationMail :: Text -> Text -> Cfg.SmtpConfig -> Email -> Mime.Mail
+buildVerificationMail code username =
+  buildMail subject (Just username) body
+  where subject = "Flatr Verification"
         body = Smtp.plainTextPart $ format
                    ( "Please confirm your email adress by visiting this URL"
                      % stext % "/#signup?code=" % stext % "&serverUrl=" % stext
@@ -57,9 +56,8 @@ buildVerificationMail code =
 
 buildInvitationMail :: Text -> Cfg.SmtpConfig -> Email -> Mime.Mail
 buildInvitationMail code =
-  buildMail subject username body
-  where username = "TODO FIXME"
-        subject = "Flatr Invitation"
+  buildMail subject Nothing body
+  where subject = "Flatr Invitation"
         body = Smtp.plainTextPart $ format
                    ( "You are invited to join Flatr, to accept visit this URL"
                      % stext % "/#signup?code=" % stext % "&serverUrl=" % stext

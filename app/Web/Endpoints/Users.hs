@@ -13,7 +13,7 @@ module Web.Endpoints.Users (routeUsers) where
 import           Control.Monad.IO.Class       (liftIO)
 import           Crypto.Random                (getRandomBytes)
 import           Data.HVect                   (HVect, ListContains)
-import           Data.Text                    (Text)
+import           Data.Text                    (Text, append)
 import           Database.Persist             hiding (delete, get)
 import qualified Database.Persist             as P
 import           Network.HTTP.Types.Status    (created201)
@@ -97,8 +97,11 @@ postUsersAction registration
         _inv <- Util.trySqlSelectFirstError Util.NotInvited SqlT.InvitationEmail email
         -- fails if user exists
         _user <- Util.trySqlSelectFirstError Util.UserEmailExists SqlT.UserEmail email
+        let username = JsonRegistration.firstName registration
+              `append` JsonRegistration.lastName registration
         verificationCode <- Util.makeHex <$> liftIO (getRandomBytes 10)
-        liftIO $ Mail.sendBuiltMail cfg email (Mail.buildVerificationMail verificationCode)
+        liftIO $ Mail.sendBuiltMail cfg email
+                 $ Mail.buildVerificationMail verificationCode username
         registerUser registration gen email (Just verificationCode) >>= returnUserById
 
   | otherwise = -- User should provide at least code or email
