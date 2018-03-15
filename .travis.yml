@@ -1,6 +1,4 @@
-matrix:
-  include:
-    - language: nix
-    - ghc:
-        - "8.2"
-        - "8.0"
+language: haskell
+ghc:
+  - "8.2"
+  - "8.0"
