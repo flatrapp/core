@@ -16,13 +16,11 @@ EOF
 `$ nix-env -i cabal-install`
 
 ### Build
-Launch the nix shell
-
-`$ cabal build`
+`$ nix-build`
 
 ### Run
 Launch the nix shell
-`$ cabal run`
+`$ ./result/bin/Flatr-App-Core-exe`
 
 ### Launching the nix shell
 Either launch it yourself with `$ nix-shell -I nixpkgs=https://github.com/NixOS/nixpkgs-channels/archive/nixos-17.09.tar.gz`
