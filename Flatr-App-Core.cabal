@@ -37,7 +37,7 @@ executable flatr-core
                      , bytestring
                      , base16-bytestring >=0.1
                      , cryptohash >=0.11
-                     , cryptonite
+                     , cryptonite >=0.22
                      , regex-pcre
                      , esqueleto
                      , formatting
