@@ -22,7 +22,7 @@ import           Database.Persist.TH     ( persistLowerCase
 import           Model.CoreTypes         (Email)
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
-User json
+User
   email      Email
   password   Text
   salt       Text
@@ -49,19 +49,19 @@ TaskUser
 
   UniqueTaskUser taskId userId
 
-Turn json
+Turn
   userId     UserId
   taskId     TaskId
   startDate  UTCTime
   finishedAt UTCTime Maybe
 
-Task json
+Task
   title          Text
   description    Text
   frequency      Int
   completionTime Int
 
-Invitation json
+Invitation
   email Email
   code  Text
   deriving Show
