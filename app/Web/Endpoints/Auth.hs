@@ -15,7 +15,6 @@ where
 
 import           Control.Monad                    (when, unless)
 import           Control.Monad.IO.Class           (liftIO)
-import           Crypto.Random                    (getRandomBytes)
 import           Data.Aeson                       (object, (.=))
 import           Data.Text                        (Text)
 import           Data.Time.Clock.POSIX            (POSIXTime, getPOSIXTime
@@ -24,6 +23,7 @@ import           Database.Persist.Sql             hiding (delete, get)
 import qualified Web.JWT                          as JWT
 import           Web.Spock
 
+import qualified Crypto
 import           Model.CoreTypes                  (ApiAction, Api)
 import qualified Model.SqlTypes                   as SqlT
 import           Model.JsonTypes.LoginCredentials
@@ -33,9 +33,8 @@ import           Util                             ( errorJson
                                                               , UserDisabled
                                                               )
                                                   , eitherJsonBody
-                                                  , trySqlSelectFirstError
                                                   )
-import qualified Util
+import           Query.Util                       (trySqlSelectFirstError, runSQL)
 
 routeAuth :: Api ctx
 routeAuth = post "auth" $ eitherJsonBody >>= postAuthAction
@@ -45,8 +44,8 @@ postAuthAction loginCredentials = do
   Entity userId user <- trySqlSelectFirstError CredentialsWrong
                                                SqlT.UserEmail
                                              $ email loginCredentials
-  let hashedPw = Util.hashPassword (password loginCredentials)
-                                   (Util.decodeHex . SqlT.userSalt $ user)
+  let hashedPw = Crypto.hashPassword (password loginCredentials)
+                                    $ SqlT.userSalt user
   when (hashedPw /= SqlT.userPassword user) $
     errorJson CredentialsWrong
   unless (SqlT.userIsVerified user) $
@@ -55,14 +54,14 @@ postAuthAction loginCredentials = do
     errorJson UserDisabled
 
   currentTime <- liftIO getPOSIXTime
-  tokenId <- Util.makeHex <$> liftIO (getRandomBytes 10)
+  tokenId <- liftIO Crypto.tokenId
   let validUntil = currentTime + tokenTimeout + tokenGracePeriod
   let key = JWT.secret jwtSecret
   let cs = JWT.def { JWT.exp = JWT.numericDate validUntil
                     , JWT.jti = JWT.stringOrURI tokenId
                     , JWT.sub = JWT.stringOrURI $ email loginCredentials
                     }
-  _newId <- Util.runSQL . insert . SqlT.Token
+  _newId <- runSQL . insert . SqlT.Token
                 userId tokenId $ posixSecondsToUTCTime validUntil
   json $ object [ "token"    .= JWT.encodeSigned JWT.HS256 key cs
                 , "tokenId"  .= tokenId

@@ -8,20 +8,24 @@
 module Web.Endpoints.Invitation (routeInvitations) where
 
 import           Control.Monad.IO.Class       (liftIO)
-import           Crypto.Random                (getRandomBytes)
 import           Data.HVect                   (HVect, ListContains)
 import qualified Database.Persist             as P
 import           Formatting                   ((%), int, sformat)
 import           Network.HTTP.Types.Status    (created201)
 import           Web.Spock
 
+import qualified Crypto
 import qualified Mail
 import           Model.CoreTypes              (ApiAction, Api, Email, apiCfg)
 import qualified Model.SqlTypes               as SqlT
 import qualified Model.JsonTypes.Invitation   as JsonInvitation
 import qualified Model.JsonTypes.InvitationIn as JsonInvitationIn
-import           Util                         (errorJson, runSQL)
-import qualified Util
+import           Util                         ( errorJson, JsonError(..)
+                                              , eitherJsonBody, emptyResponse)
+import           Query.Util                   ( runSQL, integerKey
+                                              , trySqlGet, trySqlSelectFirst
+                                              , trySqlSelectFirst')
+import           Query.Invitation
 import           Web.Auth                     (authHook)
 
 routeInvitations :: Api (HVect xs)
@@ -29,22 +33,22 @@ routeInvitations =
   prehook authHook $ do
     get "invitations" getInvitationsAction
     delete ("invitations" <//> var) $ \invitationId ->
-      Util.trySqlGet invitationId >> deleteInvitationAction invitationId
+      trySqlGet invitationId >> deleteInvitationAction invitationId
     patch ("invitations" <//> var) $ \invitationId ->
-      Util.trySqlSelectFirst SqlT.InvitationId invitationId
+      trySqlSelectFirst SqlT.InvitationId invitationId
       >>= resendInvitationAction
-    post "invitations" (Util.eitherJsonBody >>= postInvitationAction)
+    post "invitations" (eitherJsonBody >>= postInvitationAction)
 
 getInvitationsAction :: ListContains n Email xs => ApiAction (HVect xs) a
 getInvitationsAction = do
-  allInvitations <- runSQL $ P.selectList [] [P.Asc SqlT.InvitationId]
+  allInvitations <- runSQL $ getInvitations
   json $ map JsonInvitation.jsonInvitation allInvitations
 
 deleteInvitationAction :: ListContains n Email xs
                        => SqlT.InvitationId -> ApiAction (HVect xs) a
 deleteInvitationAction invitationId = do
   runSQL $ P.delete invitationId
-  Util.emptyResponse
+  emptyResponse
 
 resendInvitationAction :: ListContains n Email xs
                        => P.Entity SqlT.Invitation -> ApiAction (HVect xs) a
@@ -59,7 +63,7 @@ resendInvitationAction i@(P.Entity _id invitation) = do
 postInvitationAction :: ListContains n Email xs
                      => JsonInvitationIn.Invitation -> ApiAction (HVect xs) a
 postInvitationAction invitation = do
-  invitationCode <- Util.makeHex <$> liftIO (getRandomBytes 10)
+  invitationCode <- liftIO Crypto.invitationCode
   let email = JsonInvitationIn.email invitation
   maybeInvitationId <- runSQL $ P.insertUnique
     SqlT.Invitation { SqlT.invitationEmail = email
@@ -67,12 +71,12 @@ postInvitationAction invitation = do
                     }
   case maybeInvitationId of
     Nothing ->
-      errorJson Util.InvitationEmailExists
+      errorJson InvitationEmailExists
     Just invitationId -> do
-      newInvitation <- Util.trySqlSelectFirst' SqlT.InvitationId invitationId
+      newInvitation <- trySqlSelectFirst' SqlT.InvitationId invitationId
       cfg <- apiCfg <$> getState
       liftIO $ Mail.sendBuiltMail cfg email (Mail.buildInvitationMail invitationCode)
       setStatus created201
-      let location = sformat ("/invitation/" % int) (Util.integerKey invitationId :: Integer)
+      let location = sformat ("/invitation/" % int) (integerKey invitationId :: Integer)
       setHeader "Location" location
       json . JsonInvitation.jsonInvitation $ newInvitation

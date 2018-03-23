@@ -10,9 +10,10 @@ import           Data.Aeson           (ToJSON)
 import           Data.Text            (Text)
 import           Database.Persist.Sql (Entity(..))
 import           GHC.Generics         (Generic)
-import qualified Model.SqlTypes       as SqlT
 import           Prelude              hiding (id)
-import qualified Util
+
+import qualified Model.SqlTypes       as SqlT
+import           Query.Util           (integerKey)
 
 data Invitation =
      Invitation { id             :: Integer
@@ -24,7 +25,7 @@ instance ToJSON Invitation
 
 jsonInvitation :: Entity SqlT.Invitation -> Invitation
 jsonInvitation (Entity invitationId invitation) =
-    Invitation { id             = Util.integerKey invitationId
+    Invitation { id             = integerKey invitationId
                , email          = SqlT.invitationEmail invitation
                , invitationCode = SqlT.invitationCode invitation
                }

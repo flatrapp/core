@@ -22,13 +22,15 @@ import           Model.SqlTypes         ( User
                                         , tokenValidUntil
                                         )
 import           Web.Endpoints.Auth     (jwtSecret)
-import qualified Util
+import           Util                   ( errorJson, showText
+                                        , JsonError(Unauthorized))
+import           Query.Util             (runSQL, trySqlSelectFirst')
 
 getCurrentUser :: ListContains n CoreT.Email xs
                => CoreT.ApiAction (HVect xs) (P.Entity User)
 getCurrentUser = do
   email <- fmap findFirst getContext
-  Util.trySqlSelectFirst' UserEmail email
+  trySqlSelectFirst' UserEmail email
 
 authHook :: CoreT.ApiAction (HVect xs) (HVect (CoreT.Email ': xs))
 authHook = do
@@ -43,7 +45,7 @@ authHook = do
 
   case maybeT >> maybeSubject of
     Nothing ->
-      Util.errorJson Util.Unauthorized
+      errorJson Unauthorized
     Just subject ->
       return $ (pack . show $ subject) :&: oldCtx
 
@@ -57,7 +59,7 @@ extractToken bearerToken = -- TODO use secret specified in config
 retrieveServerToken :: (SpockConn m ~ SqlBackend, Monad m, HasSpock m) =>
                        Maybe JWT.StringOrURI -> m (Maybe (Entity Token))
 retrieveServerToken (Just tokenId) =
-  Util.runSQL $ P.selectFirst [TokenTokenId P.==. Util.showText tokenId] []
+  runSQL $ P.selectFirst [TokenTokenId P.==. showText tokenId] []
 retrieveServerToken Nothing = return Nothing
 
 validateToken :: UTCTime -> Token -> Maybe Token

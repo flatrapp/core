@@ -12,7 +12,7 @@ import           Database.Persist.Sql (Entity(..))
 import           GHC.Generics         (Generic)
 import qualified Model.SqlTypes       as SqlT
 import           Prelude              hiding (id)
-import qualified Util
+import           Query.Util           (integerKey)
 
 data User =
     User { id            :: Integer
@@ -28,7 +28,7 @@ instance ToJSON User
 
 jsonUser :: Entity SqlT.User -> User
 jsonUser (Entity userId user) =
-    User { id            = Util.integerKey userId
+    User { id            = integerKey userId
          , email         = SqlT.userEmail user
          , firstName     = SqlT.userFirstName user
          , lastName      = SqlT.userLastName user

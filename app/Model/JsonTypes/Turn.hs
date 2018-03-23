@@ -11,7 +11,7 @@ import           Database.Persist.Sql (Entity(..))
 import           Data.Time.Clock      (UTCTime)
 import           GHC.Generics         (Generic)
 import qualified Model.SqlTypes       as SqlT
-import qualified Util
+import           Query.Util           (integerKey)
 
 data Turn =
     Turn { userId    :: Integer
@@ -22,6 +22,6 @@ instance ToJSON Turn
 
 jsonTurn :: Entity SqlT.Turn -> Turn
 jsonTurn (Entity _turnId turn) =
-    Turn { userId    = Util.integerKey . SqlT.turnUserId $ turn
+    Turn { userId    = integerKey . SqlT.turnUserId $ turn
          , startDate = SqlT.turnStartDate turn
          }

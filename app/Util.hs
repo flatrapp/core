@@ -6,88 +6,28 @@
 
 module Util
     ( JsonError(..)
-    , decodeHex
     , eitherJsonBody
     , emptyResponse
     , errorJson
-    , hashPassword
-    , integerKey
-    , makeHex
     , maybeToEither
     , maybeTuple
-    , randomBS
-    , randomBytes
-    , randomText
-    , runSQL
     , showText
-    , trySqlGet
-    , trySqlGet'
-    , trySqlSelectFirst
-    , trySqlSelectFirst'
-    , trySqlSelectFirstError
     )
 where
 
 import           Control.Arrow             ((***))
 import           Control.Monad.IO.Class    (MonadIO)
-import           Control.Monad.Logger      (LoggingT, runStdoutLoggingT)
-import           Crypto.Error              (throwCryptoError)
-import qualified Crypto.KDF.Argon2         as Ar2
 import           Data.Aeson                ( FromJSON
                                            , object
                                            , (.=)
                                            , eitherDecodeStrict'
                                            )
 import qualified Data.ByteString           as BS
-import qualified Data.ByteString.Base16    as B16
 import qualified Data.Text                 as T
-import qualified Data.Text.Encoding        as E
-import           Data.Word8                (Word8)
-import qualified Database.Persist          as P
-import           Database.Persist          ((==.))
-import           Database.Persist.Sqlite   ( SqlBackend
-                                           , SqlPersistT
-                                           , Key
-                                           , ToBackendKey
-                                           , runSqlConn
-                                           , fromSqlKey
-                                           )
 import           Network.HTTP.Types.Status
-import           System.Random             (StdGen, next)
 import           Web.Spock
 
 import qualified Model.CoreTypes           as CoreT
-
-randomText :: Int -> StdGen -> T.Text
-randomText len gen  = makeHex $ randomBS len gen
-
-randomBytes :: Int -> StdGen -> [Word8]
-randomBytes 0 _ = []
-randomBytes ct g =
-    let (value, nextG) = next g
-    in fromIntegral value:randomBytes (ct - 1) nextG
-
-randomBS :: Int -> StdGen -> BS.ByteString
-randomBS len g =
-    BS.pack $ randomBytes len g
-
-makeHex :: BS.ByteString -> T.Text
-makeHex = E.decodeUtf8 . B16.encode
-
-decodeHex :: T.Text -> BS.ByteString
-decodeHex = fst . B16.decode . E.encodeUtf8
-
-hashPassword :: T.Text -> BS.ByteString -> T.Text
-hashPassword password salt = makeHex . throwCryptoError
-    $ Ar2.hash Ar2.defaultOptions (E.encodeUtf8 password) salt 1024
-    -- throwCryptoError can in theory throw, crashing the program.
-    -- But this will happen only if salt length or output size are invalid.
-    -- As this will never be the case (as long as we provide acceptable salts),
-    -- this will never happen.
-
-runSQL :: (HasSpock m, SpockConn m ~ SqlBackend)
-       => SqlPersistT (LoggingT IO) a -> m a
-runSQL action = runQuery $ \conn -> runStdoutLoggingT $ runSqlConn action conn
 
 data JsonError
   = CredentialsWrong
@@ -140,9 +80,6 @@ maybeTuple Nothing _         = Nothing
 maybeTuple _ Nothing         = Nothing
 maybeTuple (Just a) (Just b) = Just (a, b)
 
-integerKey :: (Num n, ToBackendKey SqlBackend record) => Key record -> n
-integerKey = fromIntegral . fromSqlKey
-
 showText :: (Show a) => a -> T.Text
 showText = T.pack . show
 
@@ -162,63 +99,3 @@ eitherJsonBody = do
       errorJson . BadRequest $ "Failed to parse json: " ++ err
     Right val ->
       return val
-
--- TODO combine get and selectFirst or think about why each is necessary
--- TODO figure out a better type signature for all trySql methods
-trySqlGet :: (P.PersistEntityBackend b ~ SqlBackend
-             , SpockConn (ActionCtxT ctx m) ~ SqlBackend, MonadIO m
-             , P.PersistEntity b, HasSpock (ActionCtxT ctx m)
-             ) => Key b -> ActionCtxT ctx m b
-trySqlGet entityId = do
-  mEntity <- runSQL $ P.get entityId
-  case mEntity of
-    Nothing -> errorJson NotFound
-    Just entity -> return entity
-
--- strict version which crashes if it's not there
-trySqlGet' :: ( P.PersistEntityBackend b ~ SqlBackend, SpockConn m ~ SqlBackend
-              , P.PersistEntity b, HasSpock m, Monad m
-              ) => Key b -> m b
-trySqlGet' entityId = do
-  mEntity <- runSQL $ P.get entityId
-  case mEntity of
-    Nothing -> error "I fucked up, this really value really should be there!"
-    Just entity -> return entity
-
-trySqlSelectFirst :: ( P.PersistEntityBackend record ~ SqlBackend
-                     , SpockConn (ActionCtxT ctx m) ~ SqlBackend
-                     , P.PersistField typ
-                     , MonadIO m
-                     , P.PersistEntity record
-                     , HasSpock (ActionCtxT ctx m)
-                     ) => P.EntityField record typ
-                       -> typ
-                       -> ActionCtxT ctx m (P.Entity record)
-trySqlSelectFirst = trySqlSelectFirstError NotFound
-
--- strict version which crashes if it's not there
-trySqlSelectFirst' :: ( P.PersistEntityBackend record ~ SqlBackend
-                      , SpockConn m ~ SqlBackend , P.PersistField typ
-                      , P.PersistEntity record, HasSpock m, Monad m
-                      ) => P.EntityField record typ -> typ -> m (P.Entity record)
-trySqlSelectFirst' identifier entityId = do
-  mEntity <- runSQL $ P.selectFirst [identifier ==. entityId] []
-  case mEntity of
-    Nothing -> error "I fucked up, this really value really should be there!"
-    Just entity -> return entity
-
-trySqlSelectFirstError :: ( P.PersistEntityBackend record ~ SqlBackend
-                          , SpockConn (ActionCtxT ctx m) ~ SqlBackend
-                          , P.PersistField typ
-                          , MonadIO m
-                          , P.PersistEntity record
-                          , HasSpock (ActionCtxT ctx m)
-                          ) => JsonError
-                            -> P.EntityField record typ
-                            -> typ
-                            -> ActionCtxT ctx m (P.Entity record)
-trySqlSelectFirstError errStatus identifier entityId = do
-  mEntity <- runSQL $ P.selectFirst [identifier ==. entityId] []
-  case mEntity of
-    Nothing -> errorJson errStatus
-    Just entity -> return entity

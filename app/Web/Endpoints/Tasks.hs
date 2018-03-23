@@ -7,7 +7,7 @@
 
 module Web.Endpoints.Tasks (routeTasks) where
 
-import           Control.Monad             ((<=<), when, void)
+import           Control.Monad             ((<=<))
 import           Control.Monad.IO.Class    (liftIO)
 import           Data.HVect                (HVect, ListContains)
 import           Data.Maybe                (fromJust, listToMaybe, fromMaybe)
@@ -27,8 +27,10 @@ import qualified Model.SqlTypes            as SqlT
 import qualified Model.JsonTypes.Task      as JsonTask
 import qualified Model.JsonTypes.TaskIn    as JsonTaskIn
 import qualified Model.JsonTypes.Turn      as JsonTurn
-import           Util                      (runSQL)
-import qualified Util
+import           Util                      (eitherJsonBody, emptyResponse)
+import           Query.Util                ( integerKey, runSQL, trySqlGet
+                                           , trySqlSelectFirst, trySqlSelectFirst'
+                                           )
 import           Web.Auth                  (authHook)
 
 routeTasks :: Api (HVect xs)
@@ -36,15 +38,15 @@ routeTasks =
   prehook authHook $ do
     get "tasks" getTasksAction
     get ("tasks" <//> var) $
-      getTaskAction <=< Util.trySqlSelectFirst SqlT.TaskId
+      getTaskAction <=< trySqlSelectFirst SqlT.TaskId
     delete ("tasks" <//> var) $ \taskId ->
-      Util.trySqlGet taskId >> deleteTaskAction taskId
+      trySqlGet taskId >> deleteTaskAction taskId
     post ("tasks" <//> var <//> "finish") $ \taskId ->
-      Util.trySqlSelectFirst SqlT.TurnTaskId taskId >> finishTaskAction taskId
+      trySqlSelectFirst SqlT.TurnTaskId taskId >> finishTaskAction taskId
     post ("tasks" <//> "update") updateTurnsAction
     put ("tasks" <//> var) $ \taskId ->
-      Util.eitherJsonBody >>= putTaskAction taskId
-    post "tasks" $ Util.eitherJsonBody >>= postTasksAction
+      eitherJsonBody >>= putTaskAction taskId
+    post "tasks" $ eitherJsonBody >>= postTasksAction
 
 getTaskInfo :: (JsonTask.Task -> ApiAction ctx a)
              -> Entity SqlT.Task
@@ -76,7 +78,7 @@ deleteTaskAction :: ListContains n Email xs
                  => SqlT.TaskId -> ApiAction (HVect xs) a
 deleteTaskAction taskId = do
   runSQL $ P.delete taskId
-  Util.emptyResponse
+  emptyResponse
 
 finishTaskAction :: ListContains n Email xs
                  => SqlT.TaskId -> ApiAction (HVect xs) a
@@ -88,14 +90,14 @@ finishTaskAction taskId = do
     , SqlT.TurnStartDate <. currentTime
     ]
     [SqlT.TurnFinishedAt =. Just currentTime]
-  Util.emptyResponse
+  emptyResponse
 
 putTaskAction :: ListContains n Email xs
               => SqlT.TaskId -> JsonTaskIn.Task -> ApiAction (HVect xs) a
 -- TODO combine with postTaskAction
 -- TODO maybe to JsonTaskIn.Task with argument pattern matching as well
 putTaskAction taskId task = do
-  _task <- Util.trySqlGet taskId  -- we just want to check if it is there TODO maybe think of something better
+  _task <- trySqlGet taskId  -- we just want to check if it is there TODO maybe think of something better
   runSQL $ P.replace taskId SqlT.Task {
         SqlT.taskTitle          = JsonTaskIn.title task
       , SqlT.taskDescription    = JsonTaskIn.description task
@@ -127,7 +129,7 @@ postTasksAction task = do
 updateTurnsAction :: ListContains n Email xs => ApiAction (HVect xs) a
 updateTurnsAction = do
   updateTurns
-  Util.emptyResponse
+  emptyResponse
 
 updateTurns :: ApiAction ctx ()
 updateTurns = do
@@ -156,28 +158,31 @@ updateTaskTurns users (Entity taskId task) = do
              E.orderBy [E.desc (turn E.^. SqlT.TurnStartDate)]
              return (turn E.^. SqlT.TurnUserId)
   let taskUsers :: [Key SqlT.User] = map E.unValue taskUsersValue  -- TODO incorporate in line above with fmapping
-  when (null unfinishedTurns) $
-    void . runSQL $ insert SqlT.Turn {
-         SqlT.turnUserId     = nextUser taskUsers
-       , SqlT.turnTaskId     = taskId
-       , SqlT.turnStartDate  = startDate currentTime finishedTurns
-       , SqlT.turnFinishedAt = Nothing
-       }
-  Util.emptyResponse
+  case nextUser unfinishedTurns taskUsers of
+    Just nextUser' -> do
+        _ <- runSQL $ insert SqlT.Turn {
+             SqlT.turnUserId     = nextUser'
+           , SqlT.turnTaskId     = taskId
+           , SqlT.turnStartDate  = startDate currentTime finishedTurns
+           , SqlT.turnFinishedAt = Nothing
+           }
+        return undefined
+    Nothing -> return undefined   -- WARNING should never be evaluated!!!
   where
-  -- head should never be able to fail. If taskUsers is empty `users \\ taskUsers`
-  -- will not be empty and therefore skip `head TaskUsers`
-  nextUser taskUsers = fromMaybe (head taskUsers) $ listToMaybe $ users \\ taskUsers
-  frequency = SqlT.taskFrequency task
-  startDate currentTime [] = addUTCTime (1800::NominalDiffTime) currentTime
-  startDate _currTime (Entity _key lastTurn : _xs) =
-    addUTCTime (realToFrac frequency)
-               (fromJust . SqlT.turnFinishedAt $ lastTurn)
+    startDate currentTime [] = addUTCTime (1800::NominalDiffTime) currentTime
+    startDate _currTime (Entity _key lastTurn : _xs) =
+      addUTCTime (realToFrac $ SqlT.taskFrequency task)
+                 (fromJust $ SqlT.turnFinishedAt lastTurn)
+    nextUser [] taskUsers =
+      -- head should never be able to fail. If taskUsers is empty `users \\ taskUsers`
+      -- will not be empty and therefore skip `head TaskUsers`
+      Just $ fromMaybe (head taskUsers) $ listToMaybe $ users \\ taskUsers
+    nextUser _unfinishedTurns _ = Nothing
 
 returnNewTask :: SqlT.TaskId -> ApiAction ctx a
 returnNewTask taskId = do
-  newTask <- Util.trySqlSelectFirst' SqlT.TaskId taskId
+  newTask <- trySqlSelectFirst' SqlT.TaskId taskId
   setStatus created201
-  let location = sformat ("/tasks/" % int) (Util.integerKey taskId :: Integer)
+  let location = sformat ("/tasks/" % int) (integerKey taskId :: Integer)
   setHeader "Location" location
   getTaskInfo json newTask
