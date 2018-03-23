@@ -27,8 +27,8 @@ import qualified Model.SqlTypes               as SqlT
 import qualified Model.JsonTypes.Registration as JsonRegistration
 import qualified Model.JsonTypes.User         as JsonUser
 import           Util                         ( errorJson, eitherJsonBody
-                                              , JsonError(..), emptyResponse)
-import           Query.Util                   ( runSQL, trySqlGet
+                                              , JsonError(..))
+import           Query.Util                   ( runSQL
                                               , trySqlSelectFirst
                                               , trySqlSelectFirstError
                                               , sqlAssertIsNotThere)
@@ -46,9 +46,8 @@ routeUsers = do
         Nothing -> getUsersAction
         Just code -> verifyEmailAction code -- TODO maybe simplify
     get ("users" <//> var) $ returnUserById . Just
-    delete ("user" <//> var) $ \userId ->
-      trySqlGet userId >> deleteUserAction userId
     -- TOOD implement put "users" $ do
+    -- TODO implement disable user
 
 returnUserById :: Maybe (Key SqlT.User) -> ApiAction ctx m
 returnUserById Nothing =
@@ -67,12 +66,6 @@ verifyEmailAction code = do
   runSQL $ P.updateWhere [SqlT.UserId ==. userId]
                          [SqlT.UserVerifyCode =. Nothing]
   returnUserById $ Just userId
-
-deleteUserAction :: ListContains n Email xs
-                 => SqlT.UserId -> ApiAction (HVect xs) a
-deleteUserAction userId = do
-  runSQL $ P.delete userId
-  emptyResponse
 
 postUsersAction :: JsonRegistration.Registration -> ApiAction ctx a
 postUsersAction registration
