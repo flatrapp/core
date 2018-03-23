@@ -12,6 +12,7 @@ module Query.Util
     , trySqlSelectFirst
     , trySqlSelectFirst'
     , trySqlSelectFirstError
+    , sqlAssertIsNotThere
     )
 where
 
@@ -96,3 +97,19 @@ trySqlSelectFirstError errStatus identifier entityId = do
   case mEntity of
     Nothing -> errorJson errStatus
     Just entity -> return entity
+
+sqlAssertIsNotThere :: ( P.PersistEntityBackend record ~ SqlBackend
+                       , SpockConn (ActionCtxT ctx m) ~ SqlBackend
+                       , P.PersistField typ
+                       , MonadIO m
+                       , P.PersistEntity record
+                       , HasSpock (ActionCtxT ctx m)
+                       ) => JsonError
+                         -> P.EntityField record typ
+                         -> typ
+                         -> ActionCtxT ctx m ()
+sqlAssertIsNotThere errStatus identifier entityId = do
+  mEntity <- runSQL $ P.selectFirst [identifier ==. entityId] []
+  case mEntity of
+    Nothing -> return ()
+    Just _entity -> errorJson errStatus

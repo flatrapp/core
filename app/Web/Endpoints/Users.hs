@@ -30,7 +30,8 @@ import           Util                         ( errorJson, eitherJsonBody
                                               , JsonError(..), emptyResponse)
 import           Query.Util                   ( runSQL, trySqlGet
                                               , trySqlSelectFirst
-                                              , trySqlSelectFirstError)
+                                              , trySqlSelectFirstError
+                                              , sqlAssertIsNotThere)
 import           Web.Auth                     (getCurrentUser, authHook)
 
 routeUsers :: Api (HVect xs)
@@ -80,7 +81,7 @@ postUsersAction registration
       (Entity invitationId theInvitation) <- trySqlSelectFirstError InvitationCodeInvalid SqlT.InvitationCode code
       let email = SqlT.invitationEmail theInvitation
       -- fails if user exists
-      _user <- trySqlSelectFirstError UserEmailExists SqlT.UserEmail email
+      _user <- sqlAssertIsNotThere UserEmailExists SqlT.UserEmail email
       -- remove Invitation after it has been used
       runSQL $ P.delete invitationId
       setStatus created201
@@ -99,7 +100,7 @@ postUsersAction registration
         -- fails if user provided email but is not invited
         _inv <- trySqlSelectFirstError NotInvited SqlT.InvitationEmail email
         -- fails if user exists
-        _user <- trySqlSelectFirstError UserEmailExists SqlT.UserEmail email
+        _user <- sqlAssertIsNotThere UserEmailExists SqlT.UserEmail email
         let username = JsonRegistration.firstName registration
               `append` JsonRegistration.lastName registration
         verificationCode <- liftIO Crypto.verificationCode
