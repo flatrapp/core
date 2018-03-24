@@ -1,9 +1,9 @@
 { mkDerivation, aeson, base, base16-bytestring, bytestring
 , configurator, containers, cryptohash, cryptonite, esqueleto
-, formatting, http-types, hvect, iso8601-time, jwt, mime-mail
-, monad-logger, mtl, network, persistent, persistent-sqlite
-, persistent-template, random, regex-pcre, smtp-mail, Spock, stdenv
-, text, time, transformers, word8
+, formatting, HaskellNet, HaskellNet-SSL, http-types, hvect
+, iso8601-time, jwt, mime-mail, monad-logger, mtl, network
+, persistent, persistent-sqlite, persistent-template, random
+, regex-pcre, Spock, stdenv, text, time, transformers, word8
 }:
 mkDerivation {
   pname = "Flatr-App-Core";
@@ -13,10 +13,11 @@ mkDerivation {
   isExecutable = true;
   executableHaskellDepends = [
     aeson base base16-bytestring bytestring configurator containers
-    cryptohash cryptonite esqueleto formatting http-types hvect
-    iso8601-time jwt mime-mail monad-logger mtl network persistent
-    persistent-sqlite persistent-template random regex-pcre smtp-mail
-    Spock text time transformers word8
+    cryptohash cryptonite esqueleto formatting HaskellNet
+    HaskellNet-SSL http-types hvect iso8601-time jwt mime-mail
+    monad-logger mtl network persistent persistent-sqlite
+    persistent-template random regex-pcre Spock text time transformers
+    word8
   ];
   homepage = "https://github.com/flatrapp/core";
   license = stdenv.lib.licenses.asl20;

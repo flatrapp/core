@@ -171,7 +171,7 @@ updateTaskTurns users (Entity taskId task) = do
   where
     startDate currentTime [] = addUTCTime (1800::NominalDiffTime) currentTime
     startDate _currTime (Entity _key lastTurn : _xs) =
-      addUTCTime (realToFrac $ SqlT.taskFrequency task)
+      addUTCTime (realToFrac $ 3600 * SqlT.taskFrequency task)
                  (fromJust $ SqlT.turnFinishedAt lastTurn)
     nextUser [] taskUsers =
       -- head should never be able to fail. If taskUsers is empty `users \\ taskUsers`

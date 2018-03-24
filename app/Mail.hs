@@ -9,20 +9,30 @@ where
 
 import           Data.Text         (Text, unpack)
 import           Formatting        ((%), stext, format)
-import qualified Network.Mail.SMTP as Smtp
 import qualified Network.Mail.Mime as Mime
 import           Network.Socket    (PortNumber)
 
 import qualified Config            as Cfg
 import           Model.CoreTypes   (Email)
 
+import Network.HaskellNet.SMTP     hiding (sendMail)
+--import Network.HaskellNet.Auth
+import Network.HaskellNet.SMTP.SSL hiding (sendMail)
+import Network.HaskellNet.SSL
+import qualified Data.Text.Lazy as TL
+import qualified Data.Text.Lazy.Encoding as TL
 
 sendMail :: Cfg.SmtpConfig -> Mime.Mail -> IO ()
-sendMail cfg = Smtp.sendMailWithLogin' host port user password
+sendMail cfg mail = doSMTPSTARTTLSWithSettings host settings $ \conn -> do
+                   authSucceed <- authenticate PLAIN user password conn
+                   if authSucceed
+                       then sendMimeMail2 mail conn
+                       else putStrLn "Authentication failed lol"
   where host     = unpack $ Cfg.host cfg
         port     = fromInteger $ Cfg.smtpPort cfg :: PortNumber
         user     = unpack $ Cfg.username cfg
         password = unpack $ Cfg.password cfg
+        settings = defaultSettingsWithPort port
 
 sendBuiltMail :: Cfg.FlatrCfg -> Email
               -> (Cfg.SmtpConfig -> Email -> Mime.Mail)
@@ -34,20 +44,27 @@ sendBuiltMail cfg emailAddress builder
 
 buildMail :: Text
           -> Maybe Text
-          -> Mime.Part
+          -> TL.Text
           -> Cfg.SmtpConfig
           -> Text
           -> Mime.Mail
 buildMail subject username body smtpConfig toAddress =
-  Smtp.simpleMail from to [] [] subject [body]
-  where from = Smtp.Address (Just "Flatr Admin") (Cfg.sender smtpConfig)
-        to = [Smtp.Address username toAddress]
+  Mime.Mail { Mime.mailFrom    = Mime.Address (Just "FlatrAdmin") from
+            , Mime.mailTo      = [Mime.Address username toAddress]
+            , Mime.mailCc      = []
+            , Mime.mailBcc     = []
+            , Mime.mailHeaders = [("Subject", "This is the subject")]
+            , Mime.mailParts   = [[bodyPart]]
+            }
+  where from = Cfg.sender smtpConfig
+        bodyPart = Mime.Part "text/plain; charset=utf-8"
+                             Mime.QuotedPrintableText Nothing [] $ TL.encodeUtf8 body
 
 buildVerificationMail :: Text -> Text -> Cfg.SmtpConfig -> Email -> Mime.Mail
 buildVerificationMail code username =
   buildMail subject (Just username) body
   where subject = "Flatr Verification"
-        body = Smtp.plainTextPart $ format
+        body = format
                    ( "Please confirm your email adress by visiting this URL"
                      % stext % "/#signup?code=" % stext % "&serverUrl=" % stext
                    ) frontendUrl code serverUrl
@@ -58,7 +75,7 @@ buildInvitationMail :: Text -> Cfg.SmtpConfig -> Email -> Mime.Mail
 buildInvitationMail code =
   buildMail subject Nothing body
   where subject = "Flatr Invitation"
-        body = Smtp.plainTextPart $ format
+        body = format
                    ( "You are invited to join Flatr, to accept visit this URL"
                      % stext % "/#signup?code=" % stext % "&serverUrl=" % stext
                    ) frontendUrl code serverUrl
