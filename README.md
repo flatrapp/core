@@ -34,8 +34,15 @@ and allow it do be active in the directory `direnv allow`.
 ### Prerequisites
 Install stack with your package manager
 
+### Configure
+`$ stack setup --install-ghc`
+
 ### Build
+`$ # install system dependencies like e.g zlib`
 `$ stack build --fast --pedantic`
 
 ### Run
 `$ stack exec Flatr-App-Core-exe`
+
+### Compile statically linked
+`$ stack build --ghc-options='-optl-static -optl-pthread' --force-dirty`
