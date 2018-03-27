@@ -108,8 +108,9 @@ postUsersAction registration
                  $ Mail.buildVerificationMail verificationCode username
         registerUser registration gen email (Just verificationCode) >>= returnUserById
   -- User should provide at least code or email
-  | otherwise =
-      errorJson $ BadRequest "Either one of [ 'code', 'email' ] has to be provided"
+  -- This CANNOT happend because the parser prevents this!
+  -- TODO make this condition impossible via the type system
+  | otherwise = error "Either one of [ 'code', 'email' ] has to be provided"
 
 -- TODO check that user is not there
 registerUser :: JsonRegistration.Registration
