@@ -32,6 +32,8 @@ getCurrentUser = do
   email <- fmap findFirst getContext
   trySqlSelectFirst' UserEmail email
 
+-- |Hook inserted before endpoint checks if the user is authenticated
+-- and returns Unauthorized if not
 authHook :: CoreT.ApiAction (HVect xs) (HVect (CoreT.Email ': xs))
 authHook = do
   oldCtx <- getContext
@@ -62,6 +64,7 @@ retrieveServerToken (Just tokenId) =
   runSQL $ P.selectFirst [TokenTokenId P.==. showText tokenId] []
 retrieveServerToken Nothing = return Nothing
 
+-- |Check if token is still valid or has expired
 validateToken :: UTCTime -> Token -> Maybe Token
 validateToken currentTime token
   | tokenValidUntil token > currentTime = Just token

@@ -39,6 +39,7 @@ import           Query.Util                       (trySqlSelectFirstError, runSQ
 routeAuth :: Api ctx
 routeAuth = post "auth" $ eitherJsonBody >>= postAuthAction
 
+-- |Validate the user credentials and return a JWT token if they are valid
 postAuthAction :: LoginCredentials -> ApiAction ctx a
 postAuthAction loginCredentials = do
   Entity userId user <- trySqlSelectFirstError CredentialsWrong
@@ -68,11 +69,14 @@ postAuthAction loginCredentials = do
                 , "validFor" .= tokenTimeout
                 ]
 
+-- |How long the JWT login token is valid for, in seconds (1 hour)
 tokenTimeout :: Data.Time.Clock.POSIX.POSIXTime
 tokenTimeout = 60 * 60
 
+-- |How long the token is still accepted after it has expired, in seconds
 tokenGracePeriod :: Data.Time.Clock.POSIX.POSIXTime
 tokenGracePeriod = 60
 
+-- |The secret key with which the key is signed
 jwtSecret :: Text
 jwtSecret = "6QQf4YsgAmyJzZFipkC5sMIXMI4hccbqdF8rmlcN"

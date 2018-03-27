@@ -60,6 +60,8 @@ resendInvitationAction i@(P.Entity _id invitation) = do
   email = SqlT.invitationEmail invitation
   invitationCode = SqlT.invitationCode invitation
 
+-- |Creates a new invitation and sends the invitation via email
+-- if an SMTP server is configured in the config file.
 postInvitationAction :: ListContains n Email xs
                      => JsonInvitationIn.Invitation -> ApiAction (HVect xs) a
 postInvitationAction invitation = do

@@ -8,10 +8,18 @@ db               = "flatrapp.db"
 port             = 8080
 jwtSecret        = "secret"
 whitelistedMails = [ "foobar@example.org" ]
+
+smtpConfig {
+  host = "smtp.example.org"
+  smtpPort = 587
+  username = "admin@flatr.example.org"
+  password = "pa$sw0rd"
+  sender = "admin@flatr.example.org"
+}
 EOF
 ```
 
-## NixOS
+## NixOS or nix packages manager
 ### Prerequisites
 `$ nix-env -i cabal-install`
 

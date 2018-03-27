@@ -51,7 +51,7 @@ routeUsers = do
 
 returnUserById :: Maybe (Key SqlT.User) -> ApiAction ctx m
 returnUserById Nothing =
-  -- TODO combine with registration... because this function is also called once when there is no registration happening
+  -- TODO combine with registration... because this function is also called when there is no registration happening
   errorJson UserEmailExists
 returnUserById (Just userId) =
   trySqlSelectFirst SqlT.UserId userId >>= json . JsonUser.jsonUser
@@ -60,6 +60,7 @@ getUsersAction :: ListContains n Email xs => ApiAction (HVect xs) a
 getUsersAction =
   json =<< (map JsonUser.jsonUser <$> runSQL (selectList [] [Asc SqlT.UserId]))
 
+-- |Endpoint to verify the email address of a user with a code that was sent to them via email
 verifyEmailAction :: ListContains n Email xs => Text -> ApiAction (HVect xs) a
 verifyEmailAction code = do
   (Entity userId _user) <- trySqlSelectFirstError VerificationCodeInvalid SqlT.UserVerifyCode $ Just code
@@ -67,6 +68,12 @@ verifyEmailAction code = do
                          [SqlT.UserVerifyCode =. Nothing]
   returnUserById $ Just userId
 
+-- |Register a new user
+-- If they provide an invitation code but not an email address they will not
+-- need to verify it if the code is valid. If they provide an email address
+-- they will be sent an email with a confirmation code.
+-- If they provide neither the requests fails.
+-- If they provide both, the code will be used  -- TODO make it fail aswell
 postUsersAction :: JsonRegistration.Registration -> ApiAction ctx a
 postUsersAction registration
   | Just code <- JsonRegistration.invitationCode registration = do
@@ -81,8 +88,8 @@ postUsersAction registration
       gen <- liftIO getStdGen
       newId <- registerUser registration gen email Nothing
       returnUserById newId
-
-  | Just email <- JsonRegistration.email registration = do  -- no invitationCode provided
+  -- no invitationCode provided but email address
+  | Just email <- JsonRegistration.email registration = do
       gen <- liftIO getStdGen
       cfg <- apiCfg <$> getState
       if email `elem` Cfg.whitelistedMails cfg then do
@@ -100,8 +107,8 @@ postUsersAction registration
         liftIO $ Mail.sendBuiltMail cfg email
                  $ Mail.buildVerificationMail verificationCode username
         registerUser registration gen email (Just verificationCode) >>= returnUserById
-
-  | otherwise = -- User should provide at least code or email
+  -- User should provide at least code or email
+  | otherwise =
       errorJson $ BadRequest "Either one of [ 'code', 'email' ] has to be provided"
 
 -- TODO check that user is not there

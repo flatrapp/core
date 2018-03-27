@@ -48,6 +48,7 @@ routeTasks =
       eitherJsonBody >>= putTaskAction taskId
     post "tasks" $ eitherJsonBody >>= postTasksAction
 
+-- |Helper function to get information about a task and its turns
 getTaskInfo :: (JsonTask.Task -> ApiAction ctx a)
              -> Entity SqlT.Task
              -> ApiAction ctx a
@@ -138,6 +139,8 @@ updateTurns = do
   tasks :: [Entity SqlT.Task] <- runSQL $ P.selectList [] []
   mapM_ (updateTaskTurns userIds) tasks
 
+-- |If this endpoint is called it will check if a Task is in need of new turns
+-- and will create those. This is the case if a Task has no unfinished turns.
 updateTaskTurns :: [Key SqlT.User] -> Entity SqlT.Task -> ApiAction ctx a
 updateTaskTurns users (Entity taskId task) = do
   currentTime <- liftIO getCurrentTime
