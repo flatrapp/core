@@ -4,4 +4,4 @@
 *.db*
 .direnv*
 dist/
-.nixpkgs/
+/result
