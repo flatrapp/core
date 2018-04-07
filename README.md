@@ -2,22 +2,13 @@
 
 ## Configure:
 
+_Flatr core_ is configured using the [Dhall](https://github.com/dhall-lang/dhall-lang) language.
+The default search path is `./config.dhall` but it can also explicitly specified as the first argument:
 ```
-cat > flatrapp.cfg << EOF
-db               = "flatrapp.db"
-port             = 8080
-jwtSecret        = "secret"
-whitelistedMails = [ "foobar@example.org" ]
+$ flatr-core config.dhall
+```
 
-smtpConfig {
-  host = "smtp.example.org"
-  smtpPort = 587
-  username = "admin@flatr.example.org"
-  password = "pa$sw0rd"
-  sender = "admin@flatr.example.org"
-}
-EOF
-```
+There is an example configuration file at `example.dhall`.
 
 ## NixOS or nix packages manager
 ### Prerequisites

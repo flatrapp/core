@@ -1,6 +1,6 @@
 /.stack-work/
 *.db
-*.cfg
+config.dhall
 *.db*
 .direnv*
 dist/

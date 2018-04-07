@@ -21,10 +21,10 @@ main = getArgs >>= parseArgs
 
 parseArgs :: [String] -> IO ()
 parseArgs args
-  | [] <- args = runApp "flatrapp.cfg"
+  | [] <- args = runApp "config.dhall"
   | "-h" `elem` args || "--help" `elem` args = do
       progName <- getProgName
-      putStrLn $ "Usage: " ++ progName ++ " [flatrapp.cfg]"
+      putStrLn $ "Usage: " ++ progName ++ " [config.dhall]"
       putStrLn $ "       " ++ progName ++ " [-h]"
   | [cfg] <- args = runApp cfg
   | otherwise = do
@@ -38,7 +38,7 @@ runApp cfgFile = do
   pool <- runStdoutLoggingT $ createSqlitePool (Config.db cfg) 5
   spockCfg <- mySpockCfg () (PCPool pool) (ApiState cfg)
   runStdoutLoggingT $ runSqlPool (runMigration migrateAll) pool
-  runSpock (Config.port cfg) (spock spockCfg app)
+  runSpock (fromInteger $ Config.port cfg) (spock spockCfg app)
 
 mySpockCfg :: sess -> PoolOrConn conn -> st -> IO (SpockCfg conn sess st)
 mySpockCfg sess conn st =
